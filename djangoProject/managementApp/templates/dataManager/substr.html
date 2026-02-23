@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container">
+<div class="row">
+    <h2 class="col-auto me-auto">Stubstrate list</h2>
+    {% if delete %}
+        <div class="col-auto">
+            <a href="/substrate?delete=false" class="button-class"><button type="button" class="btn btn-danger">Delete mode: ON</button></a>
+        </div>
+    {% else %}
+        <div class="col-auto">
+            <a href="/substrate?delete=true" class="button-class"><button type="button" class="btn btn-success">Delete mode: OFF</button></a>
+        </div>
+    {% endif %}
+    <div class="col-auto">
+        <a href="/" class="button-class"><button type="button" class="btn btn-dark">Back</button></a>
+    </div>
+</div>
+</div>
+
+<div class="container">
+    <div class="row">
+        <div class="col">
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                {% crispy newForm %}
+            </form>
+        </div>
+        <div class="col-3"></div>
+    </div>
+    <div class="row my-3"></div>
+    {% for x in formList %}
+        <div class="row">
+            <div class="col">
+                <form method="POST" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    {% crispy x.form %}
+                </form>
+            </div>
+            <div class="col-1">
+                {% if delete %}
+                    <form action="/substrate/{{x.id}}/delete/" method="post">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </form>
+                {% endif %}
+            </div>
+            <div class="col-2"></div>
+        </div>
+    {% endfor %}
+</div>
+{% endblock content %}

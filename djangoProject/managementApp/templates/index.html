@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% if user.is_authenticated %}
+    <div class="mx-auto">
+        <h4 style="text-align:center">Welcome to the BFG Database manager</h4>
+        <div class="row row-cols-1 row-cols-md-4 g-4">
+        {% for page in pages %}
+            <div class="col">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">{{page.title}}</h5>
+                        <p class="card-text">{{page.desc}}</p>
+                    </div>
+                    <a href="{{page.link}}" class="stretched-link"></a>
+                </div>
+            </div>
+        {% endfor %}  
+        </div>
+    </div>
+{% else %}
+    <div class="mx-auto">
+        <h4 style="text-align:center">Login to access the BFG Database manager</h4>
+    </div>
+    <div class="mx-auto" style="width: 50px;">
+        <a href="/auth/login/" class="button-class"><button class="btn btn-dark">Login</button></a>
+    </div>
+{% endif %}
+{% endblock content %}

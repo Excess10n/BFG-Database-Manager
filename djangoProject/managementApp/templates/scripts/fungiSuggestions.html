@@ -1,0 +1,29 @@
+<script>
+//const input = document.querySelector('input[list="fungusList"]');
+const datalist = document.getElementById("fungusList");
+let controller = null;
+
+document.querySelectorAll('input[list="fungusList"]').forEach(input => {
+    input.addEventListener("input", async () => {
+        const query = input.value;
+
+        // Cancel previous request if user types fast
+        if (controller) controller.abort();
+        controller = new AbortController();
+
+        const response = await fetch(`/json/ajax/fungi/?q=${encodeURIComponent(query)}`, {
+            signal: controller.signal
+        });
+
+        const data = await response.json();
+
+        datalist.innerHTML = ""; // Clear old options
+
+        data.results.forEach(city => {
+            const option = document.createElement("option");
+            option.value = city;
+            datalist.appendChild(option);
+        });
+    });
+});
+</script>
