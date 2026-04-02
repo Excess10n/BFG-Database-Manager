@@ -3,6 +3,11 @@
 const datalist = document.getElementById("fungusList");
 let controller = null;
 
+const params = new Proxy(new URLSearchParams(window.location.search), {
+    get: (searchParams, prop) => searchParams.get(prop),
+});
+//console.log(params)
+
 document.querySelectorAll('input[list="fungusList"]').forEach(input => {
     input.addEventListener("input", async () => {
         const query = input.value;
@@ -11,7 +16,14 @@ document.querySelectorAll('input[list="fungusList"]').forEach(input => {
         if (controller) controller.abort();
         controller = new AbortController();
 
-        const response = await fetch(`/json/ajax/fungi/?q=${encodeURIComponent(query)}`, {
+        var url = "";
+        if (params.date != null && params.site != null){
+            url = `/json/ajax/fungi/?q=${encodeURIComponent(query)}&date=${params.date}&site=${params.site}`;
+        } else {
+            url = `/json/ajax/fungi/?q=${encodeURIComponent(query)}`;
+        }
+
+        const response = await fetch(url, {
             signal: controller.signal
         });
 
@@ -19,11 +31,19 @@ document.querySelectorAll('input[list="fungusList"]').forEach(input => {
 
         datalist.innerHTML = ""; // Clear old options
 
-        data.results.forEach(city => {
+        data.results.forEach(fungus => {
             const option = document.createElement("option");
-            option.value = city;
+            option.value = fungus;
             datalist.appendChild(option);
         });
+
+        label = document.querySelectorAll(`label[for='${input.id}']`).item(0)
+        if (data.dup == "true") {
+            label.innerHTML = "Fungus (Name already used)"
+        } else {
+            label.innerHTML = "Fungus"
+        }
+
     });
 });
 </script>

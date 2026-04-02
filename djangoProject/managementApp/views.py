@@ -4,6 +4,7 @@ from django.core.exceptions import PermissionDenied
 from django.db.models import RestrictedError
 from .forms import AssocForm, SubtrForm, SiteForm, RecordFilterForm, RecordForm, RecordInitialForm
 from .models import Association, Substrate, Site, Record, Fungi, Member
+from .viewFunctions import getFungiObjects
 import datetime
 
 # Create your views here.
@@ -71,6 +72,11 @@ def IndexView(request):
                 "title": "Record export",
                 "desc": "Export for the website or FRDBI",
                 "link": "/export"
+            },
+            {
+                "title": "Fungi search",
+                "desc": "Get Fungi recommendations based on other data related to the fungus",
+                "link": "/search"
             }
         ]
     }
@@ -179,7 +185,8 @@ def RecordEditView(request):
         
         # Fungus needs to be the fungi object not text
         try:
-            inst.fungusFK = Fungi.objects.get(fullName=data["fungus"]) 
+            current, _, _ = getFungiObjects(data["fungus"])
+            inst.fungusFK = current
         except:
             messages.add_message(request, messages.ERROR, f"{data['fungus']} not found")
             return False
@@ -204,7 +211,7 @@ def RecordEditView(request):
     index = 0
     for record in records:
         index += 1
-        form = RecordForm("Change", request.POST or None, request.FILES or None, instance=record, initial={"fungus": record.fungusFK.fullName}, prefix=f"form{index}")
+        form = RecordForm("Change", request.POST or None, request.FILES or None, instance=record, initial={"fungus": record.fungusFK.currentFungus.fullName}, prefix=f"form{index}")
         if form.is_valid():
             done = manageForm(form, False)
             if done:
@@ -301,7 +308,7 @@ def RecordBrowseView(request):
 
         if data["fungus"] != "" and data["fungus"] != None:
             try:
-                fungus = Fungi.objects.get(fullName=data["fungus"])
+                fungus, _, _ = getFungiObjects(data["fungus"])
                 param += f"fungus={data['fungus']}&"
             except:
                 messages.add_message(request, messages.ERROR, f"{data['fungus']} not found")

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container">
+<div class="row">
+    <h2 class="col-auto me-auto">Fungi Search</h2>
+    <div class="col-auto">
+        <a href="/" class="button-class"><button type="button" class="btn btn-dark">Back</button></a>
+    </div>
+</div>
+</div>
+<form method="POST" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{form|crispy}}
+    <input type="submit" value="Search" class="btn btn-primary">
+</form>
+<br>
+<h4>Results:</h4>
+<div class="container">
+<div class="row">
+    <div class="col"><b>Full Name</b></div>
+    <div class="col"><b>Common Name</b></div>
+    <div class="col"><b>Points</b> (for demonstration)</div>
+</div>
+{% for result in results %}
+    <div class="row">
+        <div class="col">{{result.fullName}}</div>
+        <div class="col">{{result.commonName}}</div>
+        <div class="col">{{result.points}}</div>
+    </div>
+{% endfor %}
+</div>
+<br>
+<h2>Offline demonstration (this will provide the lookUpTable of the offline algorithm)</h2>
+<form method="POST" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{form2|crispy}}
+    <input type="submit" value="Download" class="btn btn-primary">
+</form>
+
+{% endblock content %}

@@ -44,16 +44,25 @@ class Fungi(models.Model):
     group = models.CharField(max_length=64)
     fullName = models.CharField(max_length=196)
     commonName = models.CharField(max_length=128)
+    currentName = models.ForeignKey('FungiCurrent', on_delete=models.RESTRICT, related_name='Fungi_current', null=True)
     remarks = models.TextField()
     dateUpdated = models.DateField()
     creatorFK = models.ForeignKey(Member, on_delete=models.RESTRICT, null=False, related_name='Fungi_creator')
     updaterFK = models.ForeignKey(Member, on_delete=models.RESTRICT, null=False, related_name='Fungi_updater')
     def __str__(self):
-        return self.uniqueCode
+        return self.fullName
     
     def save(self, *args, **kwargs):
-        self.fullName = f"{self.genus} {self.species} {self.variety}"
+        if self.variety == "":
+            self.fullName = f"{self.genus} {self.species}"
+        else:
+            self.fullName = f"{self.genus} {self.species} {self.variety}"
         super(Fungi, self).save(*args, **kwargs)
+
+class FungiCurrent(models.Model):
+    currentFungus = models.OneToOneField(Fungi, on_delete=models.CASCADE, null=False)
+    def __str__(self):
+        return self.currentFungus.fullName
 
 class FungiArchive(models.Model):
     fungiFK = models.OneToOneField(Fungi, on_delete=models.CASCADE)
@@ -78,6 +87,9 @@ class Site(models.Model):
     dateUpdated = models.DateField(auto_now_add=True)
     creatorFK = models.ForeignKey(Member, on_delete=models.RESTRICT, null=False, related_name='Site_creator')
     updaterFK = models.ForeignKey(Member, on_delete=models.RESTRICT, null=False, related_name='Site_updater')
+    # EXTRA FEILDS REMOVE LATER
+    lat = models.FloatField(default=0.0)
+    lon = models.FloatField(default=0.0)
     def __str__(self):
         return self.name
 
@@ -100,16 +112,16 @@ class Record(models.Model):
         NONE = 'N'
 
     uniqueCode = models.CharField(max_length=15, null=False, blank=False, unique=True)
-    fungusFK = models.ForeignKey(Fungi, on_delete=models.RESTRICT, null=False)#
-    siteFK = models.ForeignKey(Site, on_delete=models.RESTRICT, null=False)#
-    recorderFK = models.ForeignKey(Member, on_delete=models.RESTRICT, null=False, related_name='Record_recorder')#
-    identifierFK = models.ForeignKey(Member, on_delete=models.RESTRICT, null=False, related_name='Record_identifier')#
-    confirmerFK = models.ForeignKey(Member, on_delete=models.RESTRICT, null=True, related_name='Record_confirmer')##
-    collectorFK = models.ForeignKey(Member, on_delete=models.RESTRICT, null=False, related_name='Record_collector')##
-    substrFK = models.ForeignKey(Substrate, on_delete=models.RESTRICT, null=False, related_name='Record_substr')#
-    assoc1FK  = models.ForeignKey(Association, on_delete=models.RESTRICT, null=True, blank=True, related_name='Record_assoc1')#
-    assoc2FK  = models.ForeignKey(Association, on_delete=models.RESTRICT, null=True, blank=True, related_name='Record_assoc2')#
-    assoc3FK  = models.ForeignKey(Association, on_delete=models.RESTRICT, null=True, blank=True, related_name='Record_assoc3')#
+    fungusFK = models.ForeignKey(FungiCurrent, on_delete=models.RESTRICT, null=False)
+    siteFK = models.ForeignKey(Site, on_delete=models.RESTRICT, null=False)
+    recorderFK = models.ForeignKey(Member, on_delete=models.RESTRICT, null=False, related_name='Record_recorder')
+    identifierFK = models.ForeignKey(Member, on_delete=models.RESTRICT, null=False, related_name='Record_identifier')
+    confirmerFK = models.ForeignKey(Member, on_delete=models.RESTRICT, null=True, related_name='Record_confirmer')
+    collectorFK = models.ForeignKey(Member, on_delete=models.RESTRICT, null=False, related_name='Record_collector')
+    substrFK = models.ForeignKey(Substrate, on_delete=models.RESTRICT, null=False, related_name='Record_substr')
+    assoc1FK  = models.ForeignKey(Association, on_delete=models.RESTRICT, null=True, blank=True, related_name='Record_assoc1')
+    assoc2FK  = models.ForeignKey(Association, on_delete=models.RESTRICT, null=True, blank=True, related_name='Record_assoc2')
+    assoc3FK  = models.ForeignKey(Association, on_delete=models.RESTRICT, null=True, blank=True, related_name='Record_assoc3')
     dateFound = models.DateField()
     dateEntered = models.DateField(auto_now_add=True)
     sentBMS = models.BooleanField(default=False)
@@ -121,8 +133,22 @@ class Record(models.Model):
     litRef = models.CharField(max_length=64, null=True, blank=True)
     DNATest = models.BooleanField(null=True)
     image = models.ImageField(null=True, blank=True)
+    knownDup = models.BooleanField(default=False)
+    # EXTRA FEILDS REMOVE LATER
+    lat = models.FloatField(default=0.0)
+    lon = models.FloatField(default=0.0)
+    dayOfYear = models.IntegerField(default=-1000)
     def __str__(self):
         return self.uniqueCode
+    
+    def save(self, *args, **kwargs):
+        self.dayOfYear = self.dateFound.timetuple().tm_yday
+        super(Record, self).save(*args, **kwargs)
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['-dateFound', 'dayOfYear']),
+        ]
 
 class RecordArchive(models.Model):
     recFK = models.OneToOneField(Record, on_delete=models.CASCADE)

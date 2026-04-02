@@ -3,9 +3,12 @@ from django.core.management.base import BaseCommand
 from django.core.files.images import ImageFile
 import json
 import datetime
-from ...models import Member, Manager, Fungi, FungiArchive, Group, Genus, Site, Association, Substrate, Record, RecordArchive
+from ...models import Member, Manager, Fungi, FungiCurrent, FungiArchive, Group, Genus, Site, Association, Substrate, Record, RecordArchive
 from django.contrib.auth.models import User
 import os
+# EXTRA
+import OSGridConverter
+import random
 
 ROOT_DIR = os.path.dirname(__file__)
 
@@ -106,7 +109,11 @@ class Command(BaseCommand):
         
         # fungi
         index = 0
+        later_fungi = []
         for sample in fungi_sample:
+            if sample["CurrentName"] != sample["NameId"]:
+                later_fungi.append(sample)
+                continue
             index += 1
             kwargs = {
                 'id': index,
@@ -116,6 +123,47 @@ class Command(BaseCommand):
                 'variety': sample["Variety"],
                 'group': sample["Group"],
                 'commonName': sample["CommonName"],
+                'remarks': sample["Remarks"],
+                'dateUpdated': datetime.datetime.strptime(sample["ChangeDate"], "%d/%m/%Y %H:%M").date(),
+                'creatorFK': Member.objects.get(id=1),
+                'updaterFK': Member.objects.get(id=1)
+            }
+            Fungi(**kwargs).save()
+
+            kwargs = {
+                'id': index,
+                'currentFungus': Fungi.objects.get(id=index)
+            }
+            FungiCurrent(**kwargs).save()
+
+            kwargs = {
+                'id': index,
+                'fungiFK': Fungi.objects.get(id=index),
+                'GBChkLst': sample["GBChkLst"] == "TRUE",
+                'groupOld': sample["GroupOld"],
+                'interpretCode': sample["InterpretCode"],
+                'DJSCode': sample["DJSCode"],
+                'authority': sample["Authority"],
+                'BAPspecies': sample["BAPSpecies"] == "TRUE",
+            }
+            FungiArchive(**kwargs).save()
+        
+        for sample in later_fungi:
+            index += 1
+            try:
+                current = FungiCurrent.objects.get(currentFungus=Fungi.objects.get(uniqueCode=sample["CurrentName"]))
+            except:
+                print(sample["NameId"])
+                continue
+            kwargs = {
+                'id': index,
+                'uniqueCode': sample["NameId"],
+                'genus': sample["Genus"],
+                'species': sample["Species"],
+                'variety': sample["Variety"],
+                'group': sample["Group"],
+                'commonName': sample["CommonName"],
+                'currentName': current,
                 'remarks': sample["Remarks"],
                 'dateUpdated': datetime.datetime.strptime(sample["ChangeDate"], "%d/%m/%Y %H:%M").date(),
                 'creatorFK': Member.objects.get(id=1),
@@ -139,6 +187,13 @@ class Command(BaseCommand):
         index = 0
         for sample in site_sample:
             index += 1
+
+            # EXTRA PROJECT CODE
+            if sample["SiteGR"] != "":
+                try:
+                    result = OSGridConverter.grid2latlong(sample["SiteGR"])
+                except:
+                    pass
 
             if sample["SiteVC"] == '':
                 kwargs = {
@@ -169,6 +224,11 @@ class Command(BaseCommand):
                     'creatorFK': Member.objects.get(id=1),
                     'updaterFK': Member.objects.get(id=1),
                 }
+            
+            # EXTRA
+            if sample["SiteGR"] != "":
+                kwargs['lat'] = result.latitude
+                kwargs['lon'] = result.longitude
 
             
             Site(**kwargs).save()
@@ -213,12 +273,26 @@ class Command(BaseCommand):
                 continue
             if Association.objects.filter(name=sample["RecAssoc"]).count() == 0:
                 continue
+
+            try:
+                fungus = FungiCurrent.objects.get(currentFungus=Fungi.objects.get(uniqueCode=sample["RecFungus"]))
+            except:
+                print(sample["RecFungus"])
+                continue
+
+            # EXTRA PROJECT CODE
+            site = Site.objects.get(name=sample["RecSite"])
+            if site.gridRef != "":
+                result = OSGridConverter.grid2latlong(site.gridRef)
+                xdiff = random.randrange(-100,100) / 10000.0
+                ydiff = random.randrange(-100,100) / 10000.0
+                    
             
             kwargs = {
                 'id': index,
                 'uniqueCode': sample["RecUnique"],
-                'fungusFK': Fungi.objects.get(uniqueCode=sample["RecFungus"]),
-                'siteFK': Site.objects.get(name=sample["RecSite"]),
+                'fungusFK': fungus,
+                'siteFK': site,
                 'recorderFK': Member.objects.get(id=1),
                 'identifierFK': Member.objects.get(id=1),
                 'confirmerFK': Member.objects.get(id=1),
@@ -234,6 +308,11 @@ class Command(BaseCommand):
                 'updaterFK': Member.objects.get(id=1),
                 'firstRecord': first
             }
+            # EXTRA
+            if site.gridRef != "":
+                kwargs['lat'] = result.latitude + xdiff
+                kwargs['lon'] = result.longitude + ydiff
+
             Record(**kwargs).save()
             
             kwargs = {

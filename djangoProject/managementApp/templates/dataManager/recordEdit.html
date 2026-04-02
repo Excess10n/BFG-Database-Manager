@@ -20,6 +20,10 @@
     </div>
 </div>
 <div class="row">
+    {% if dupNum == "new" %}
+        <div class="container alert danger">This fungus has already been entered for this site and date,
+        press new again to confirm</div>
+    {% endif %}
     <div class="col-3">
         <form method="POST" enctype="multipart/form-data">
             {% csrf_token %}
@@ -41,6 +45,10 @@
     </div>
     {% for x in formList %}
         <div class="row border-bottom border-dark">
+        {% if x.id == dupNum %}
+            <div class="container alert danger">This fungus has already been entered for this site and date,
+            press change again to confirm</div>
+        {% endif %}
             <div class="col">
                 <form method="POST" enctype="multipart/form-data">
                     {% csrf_token %}

@@ -7,3 +7,8 @@ add = 7 - len(code)
 for i in range(add):
     code = "0" + code
 print(code)
+
+import OSGridConverter
+cvt_wgs84 = OSGridConverter.grid2latlong('SP950130')
+print(cvt_wgs84.latitude)
+print(cvt_wgs84.longitude)
