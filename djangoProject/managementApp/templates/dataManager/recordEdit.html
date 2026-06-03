@@ -5,7 +5,7 @@
 {% block content %}
 <div class="container">
 <div class="row">
-    <h2 class="col-auto me-auto">Recording (basic)</h2>
+    <h2 class="col-auto me-auto">Bulk Data Input</h2>
     {% if delete %}
         <div class="col-auto">
             <a href="/record/edit?page={{page.current}}&delete=false&{{param}}" class="button-class"><button type="button" class="btn btn-danger">Delete mode: ON</button></a>
@@ -57,7 +57,7 @@
             </div>
             {% if delete %}
                 <div class="col-1 mt-3">
-                    <form action="/record/edit/{{x.id}}/delete?page={{page.current}}&delete={{deleteText}}&{{param}}" method="post">
+                    <form action="/record/edit/{{x.id}}/delete/?page={{page.current}}&delete={{deleteText}}&{{param}}" method="post">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-danger">Delete</button>
                     </form>

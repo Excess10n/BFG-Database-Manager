@@ -1,4 +1,3 @@
-# Seeding carries no marks but may help you write your tests
 from django.core.management.base import BaseCommand
 from django.core.files.images import ImageFile
 import json
@@ -22,7 +21,6 @@ class Command(BaseCommand):
     help = 'Insert sample data into database for tests'
 
     def handle(self, *args, **options):
-        # This is the same as bootstrap except a fewer number of objects are passed
         Record.objects.all().delete()
         RecordArchive.objects.all().delete()
         Fungi.objects.all().delete()
@@ -110,11 +108,23 @@ class Command(BaseCommand):
         # fungi
         index = 0
         later_fungi = []
+
+        def customRNG(min, max):
+            diff = max - min
+            num = (random.randrange(0,500) + random.randrange(0,500)) / 1000.0
+            return (num * diff) + min
+
         for sample in fungi_sample:
             if sample["CurrentName"] != sample["NameId"]:
                 later_fungi.append(sample)
                 continue
             index += 1
+            # custom rng
+            base = random.randrange(0,3)
+            radius = customRNG(1,2) + (base*2)
+            darkness = customRNG(0,85) + (base*85)
+            height = customRNG(2,4) + (base*4)
+
             kwargs = {
                 'id': index,
                 'uniqueCode': sample["NameId"],
@@ -126,7 +136,10 @@ class Command(BaseCommand):
                 'remarks': sample["Remarks"],
                 'dateUpdated': datetime.datetime.strptime(sample["ChangeDate"], "%d/%m/%Y %H:%M").date(),
                 'creatorFK': Member.objects.get(id=1),
-                'updaterFK': Member.objects.get(id=1)
+                'updaterFK': Member.objects.get(id=1),
+                'capRadius': radius,
+                'colourDarkness': darkness,
+                'height': height,
             }
             Fungi(**kwargs).save()
 

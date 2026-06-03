@@ -39,8 +39,8 @@ def IndexView(request):
     context = {
         "pages": [
             {
-                "title": "Add and Update records",
-                "desc": "add and update records",
+                "title": "Bulk data input",
+                "desc": "add and update records in bulk",
                 "link": "/record/edit"
             },
             {
@@ -122,13 +122,13 @@ def RecordEditView(request):
             site = Site.objects.get(name=data['site'])
         except:
             messages.add_message(request, messages.ERROR, f"{data['site']} not found")
-            redirect('/record/edit?' + param)
+            return redirect('/record/edit?' + param)
         
         try:
             rec = Member.objects.get(initials=data['rec'])
         except:
             messages.add_message(request, messages.ERROR, f"{data['rec']} not found")
-            redirect('/record/edit?' + param)
+            return redirect('/record/edit?' + param)
 
         param = f"date={data['date']}&site={site.id}&rec={rec.id}"
         return redirect('/record/edit?' + param)

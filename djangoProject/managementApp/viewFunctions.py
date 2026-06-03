@@ -6,4 +6,6 @@ def getFungiObjects(name): # returns (currentFungi, parent, child (None if not a
     if current.count() == 1:
         return current.first(), fungus, None
     return fungus.currentName, fungus.currentName.currentFungus, fungus
-    
+
+def getAllCurrentFungiObjects():
+    return Fungi.objects.filter(currentName=None)

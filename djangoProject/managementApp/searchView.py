@@ -3,7 +3,7 @@ from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.db.models import RestrictedError
 from .forms import SearchForm, SearchForm2
-from .models import Association, Substrate, Site, Record, Fungi, Member
+from .models import Association, Substrate, Site, Record, Fungi, FungiCentroids, Member
 from .viewFunctions import getFungiObjects
 import datetime
 import PIL.ExifTags
@@ -13,12 +13,19 @@ from django.conf import settings
 import json
 from django.http import FileResponse
 from django.db.models import Q
+import time
 
 DISTANCE_SCALAR = 111.1
 DISTANCE_THRESHOLD = 50
 RESULTS = 50
 LOOKUP_POINT_THRESHOLD = 0.75
-YEARS_TO_CHECK = 4
+YEARS_TO_CHECK = 8
+
+timer = 0
+def start():
+    return time.time()
+def end(x):
+    return time.time() - x
 
 def addToDict(dict, item, num):
     if item in dict.keys():
@@ -27,7 +34,7 @@ def addToDict(dict, item, num):
         dict[item] = num
     return dict
 
-def calculatePoints(points, records, weighting, scaling, calcFunc, calcConst=None):
+def calculatePoints(points, records, weighting, scaling, calcFunc=None, calcConst=None):
     # weighting is the effect it'll have on total points
     # scaling is how much more than one fungi occurance will effect the total
     occurances = {}
@@ -105,6 +112,7 @@ def SearchView(request):
     
     form = SearchForm(request.POST or None, request.FILES or None, prefix="onlineForm")
     if form.is_valid():
+        timer = start()
         data = form.cleaned_data
 
         if data["date"] != None:
@@ -118,8 +126,8 @@ def SearchView(request):
         dateQuery = (Q(
             dateFound__lte = date + datetime.timedelta(days=365*YEARS_TO_CHECK)) & Q(
             dateFound__gte = date - datetime.timedelta(days=365*YEARS_TO_CHECK))) | (Q(
-            dayOfYear__lte = date.timetuple().tm_yday + 7) & Q(
-            dayOfYear__gte = date.timetuple().tm_yday - 7))
+            dayOfYear__lte = date.timetuple().tm_yday + 21) & Q(
+            dayOfYear__gte = date.timetuple().tm_yday - 21))
 
         reducedRecords = Record.objects.filter(dateQuery)
 
@@ -217,6 +225,29 @@ def SearchView(request):
                 points = distancePoints(points, reducedRecords, weight + (weight / 2), 0.0, 1.5, [slat, slon])
             else:
                 points = distancePoints(points, reducedRecords, weight, weight, 1.5, [slat, slon], [elat, elon])
+        
+        # apply clustering points
+        if data["includeClustering"]:
+            # find the closet centroid
+            def calcDistance(p1, p2): # function taken from clustering.py
+                dist = math.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2 + (p1[2] - p2[2])**2)
+                return dist
+            
+            closest = -1
+            closestDist = 1000000000000
+            point = [data["radius"], data["darkness"], data["height"]]
+            for cent in FungiCentroids.objects.all():
+                dist = calcDistance([cent.capRadius, cent.colourDarkness, cent.height], point)
+                if dist < closestDist:
+                    closestDist = dist
+                    closest = cent.id
+
+            # index the fungi model to get the fungi with that centroid
+            fungi = Fungi.objects.filter(centroid=closest)
+
+            # add points to those fungi
+            for x in fungi:
+                points = addToDict(points, x.fullName, 2.0)
 
         # restructure and order the points dict so its [fullName, commonName (if it has one), points]
         ordered = []
@@ -244,10 +275,25 @@ def SearchView(request):
             if fungus.commonName != "":
                 ordered[i]["commonName"] = fungus.commonName
             results.append(ordered[i])
+        
+        print(end(timer))
     
     form2 = SearchForm2(request.POST or None, prefix="offlineForm")
     if form2.is_valid():
+        timer = start()
         data = form2.cleaned_data
+
+        date = data["date"]
+        date += datetime.timedelta(days=365*2)
+
+        dateQuery = (Q(
+            dateFound__lte = date + datetime.timedelta(days=365*YEARS_TO_CHECK)) & Q(
+            dateFound__gte = date - datetime.timedelta(days=365*YEARS_TO_CHECK))) | (Q(
+            dayOfYear__lte = date.timetuple().tm_yday + 21) & Q(
+            dayOfYear__gte = date.timetuple().tm_yday - 21))
+
+        reducedRecords = Record.objects.filter(dateQuery)
+
         points = {}
         # get all records with dates within a 3 weeks either side of the given date
         def calcFunc(record, date):
@@ -255,16 +301,17 @@ def SearchView(request):
             if dayDiff >= -21 and dayDiff <= 21:
                 return (21 - abs(dayDiff)) / 21.0
             return 0.0
-        points = calculatePoints(points, Record.objects.all(), 1.0, 0.0, calcFunc, data["date"])
+        points = calculatePoints(points, reducedRecords, 1.0, 0.0, calcFunc, data["date"])
 
         # get points based on site
-        try:
-            site = Site.objects.get(name=data["site"])
-        except:
-            messages.add_message(request, messages.ERROR, f"{data['site']} not found")
-            pass
+        if data["site"] != "":
+            try:
+                site = Site.objects.get(name=data["site"])
+            except:
+                messages.add_message(request, messages.ERROR, f"{data['site']} not found")
+                pass
 
-        points = distancePoints(points, Record.objects.all(), 1.0, 0.0, 1.5, [site.lat, site.lon])
+            points = distancePoints(points, reducedRecords, 1.0, 0.0, 1.5, [site.lat, site.lon])
 
         results = []
         for name in points.keys():
@@ -295,7 +342,9 @@ def SearchView(request):
                 "commonAssociations": assocs
             })
 
-        # turn into json and sent it
+        print(end(timer))
+
+        # turn into json and send it
         with open(str(settings.MEDIA_ROOT) + "\\tempFiles\\lookUpTable.json", "w") as json_file:
             json.dump({"table": results}, json_file)
             json_file.close()

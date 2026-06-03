@@ -1,5 +1,12 @@
 import json
 import os
+import time
+
+timer = 0
+def start():
+    return time.time()
+def end(x):
+    return time.time() - x
 
 ROOT_DIR = os.path.dirname(__file__)
 
@@ -19,6 +26,7 @@ def pointScale(x):
         return 0
     return round(-(1.0 / x) + 2, 3)
 
+timer = start()
 ordered = []
 for tab in table["table"]:
     # loop through all substr and assocs if it is one of the selected ones then add points
@@ -43,6 +51,8 @@ if len(ordered) < 50:
 else:
     num = 50
 
+print(end(timer))
+
 for i in range(num):
-    print(ordered[i])
+    print(f"{ordered[i]['fullName']}\t\t\t{ordered[i]['points']}")
 

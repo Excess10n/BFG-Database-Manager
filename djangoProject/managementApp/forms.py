@@ -62,10 +62,33 @@ class SearchForm(forms.Form):
         initial=1.0,
         required=False
     )
+
+    includeClustering = forms.BooleanField(label="Include clustering data", initial=False, required=False)
+
+    radius = forms.FloatField(
+        label="Cap radius",
+        widget=forms.NumberInput(attrs={'type': 'range', 'min': '1.0', 'max': '6.0', 'step': '0.1', 'class': 'form-range'}),
+        initial=1.0,
+        required=False
+    )
+    darkness = forms.FloatField(
+        label="Average darkness of the fungus 0=black, 256=white",
+        widget=forms.NumberInput(attrs={'type': 'range', 'min': '0.0', 'max': '256.0', 'step': '0.1', 'class': 'form-range'}),
+        initial=0.0,
+        required=False
+    )
+    height = forms.FloatField(
+        label="Height",
+        widget=forms.NumberInput(attrs={'type': 'range', 'min': '2.0', 'max': '12.0', 'step': '0.1', 'class': 'form-range'}),
+        initial=2.0,
+        required=False
+    )
+
+
     maxNum = forms.IntegerField(label="Max number of results", initial=20)
 
 class SearchForm2(forms.Form):
-    site = forms.CharField(label="Site", max_length=64, required=True, widget=ListTextWidget(dataset=Site.objects.values_list("name", flat=True), name="siteList"))
+    site = forms.CharField(label="Site", max_length=64, required=False, widget=ListTextWidget(dataset=Site.objects.values_list("name", flat=True), name="siteList"))
     date = forms.DateField(label="Date", required=True, widget=forms.TextInput(attrs={'type': 'date'}))
 
 class RecordForm(forms.ModelForm):

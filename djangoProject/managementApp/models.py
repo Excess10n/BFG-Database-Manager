@@ -49,6 +49,17 @@ class Fungi(models.Model):
     dateUpdated = models.DateField()
     creatorFK = models.ForeignKey(Member, on_delete=models.RESTRICT, null=False, related_name='Fungi_creator')
     updaterFK = models.ForeignKey(Member, on_delete=models.RESTRICT, null=False, related_name='Fungi_updater')
+    # EXTRA
+    capRadius = models.FloatField(null=True)
+    colourDarkness = models.FloatField(null=True)
+    height = models.FloatField(null=True)
+    centroid = models.IntegerField(default=-1)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['centroid']),
+        ]
+
     def __str__(self):
         return self.fullName
     
@@ -58,6 +69,11 @@ class Fungi(models.Model):
         else:
             self.fullName = f"{self.genus} {self.species} {self.variety}"
         super(Fungi, self).save(*args, **kwargs)
+
+class FungiCentroids(models.Model):
+    capRadius = models.FloatField(null=True)
+    colourDarkness = models.FloatField(null=True)
+    height = models.FloatField(null=True)
 
 class FungiCurrent(models.Model):
     currentFungus = models.OneToOneField(Fungi, on_delete=models.CASCADE, null=False)
