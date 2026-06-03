@@ -29,68 +29,6 @@ class ListTextWidget(forms.TextInput):
         data_list += '</datalist>'
         return (text_html + data_list)
 
-#EXTRA
-class SearchForm(forms.Form):
-    substrate = forms.CharField(label="Substrate", max_length=64, required=False, widget=ListTextWidget(dataset=Substrate.objects.values_list("name", flat=True), name="substrList"))
-    substrW = forms.FloatField(
-        label="Substrate weight",
-        widget=forms.NumberInput(attrs={'type': 'range', 'min': '0.5', 'max': '4.0', 'step': '0.1', 'class': 'form-range'}),
-        initial=1.0,
-        required=False
-    )
-    association1 = forms.CharField(label="Association 1", max_length=64, required=False, widget=ListTextWidget(dataset=Association.objects.values_list("name", flat=True), name="assocList"))
-    association2 = forms.CharField(label="Association 2", max_length=64, required=False, widget=ListTextWidget(dataset=Association.objects.values_list("name", flat=True), name="assocList"))
-    association3 = forms.CharField(label="Association 3", max_length=64, required=False, widget=ListTextWidget(dataset=Association.objects.values_list("name", flat=True), name="assocList"))
-    assocW = forms.FloatField(
-        label="Association weight",
-        widget=forms.NumberInput(attrs={'type': 'range', 'min': '0.5', 'max': '4.0', 'step': '0.1', 'class': 'form-range'}),
-        initial=1.0,
-        required=False
-    )
-    date = forms.DateField(label="Date", required=False, widget=forms.TextInput(attrs={'type': 'date'}))
-    dateW = forms.FloatField(
-        label="Date weight",
-        widget=forms.NumberInput(attrs={'type': 'range', 'min': '0.5', 'max': '4.0', 'step': '0.1', 'class': 'form-range'}),
-        initial=1.0,
-        required=False
-    )
-    site = forms.CharField(label="Site", max_length=64, required=False, widget=ListTextWidget(dataset=Site.objects.values_list("name", flat=True), name="siteList"))
-    image = forms.ImageField(label="Image", required=False)
-    locW = forms.FloatField(
-        label="Location weight",
-        widget=forms.NumberInput(attrs={'type': 'range', 'min': '0.5', 'max': '4.0', 'step': '0.1', 'class': 'form-range'}),
-        initial=1.0,
-        required=False
-    )
-
-    includeClustering = forms.BooleanField(label="Include clustering data", initial=False, required=False)
-
-    radius = forms.FloatField(
-        label="Cap radius",
-        widget=forms.NumberInput(attrs={'type': 'range', 'min': '1.0', 'max': '6.0', 'step': '0.1', 'class': 'form-range'}),
-        initial=1.0,
-        required=False
-    )
-    darkness = forms.FloatField(
-        label="Average darkness of the fungus 0=black, 256=white",
-        widget=forms.NumberInput(attrs={'type': 'range', 'min': '0.0', 'max': '256.0', 'step': '0.1', 'class': 'form-range'}),
-        initial=0.0,
-        required=False
-    )
-    height = forms.FloatField(
-        label="Height",
-        widget=forms.NumberInput(attrs={'type': 'range', 'min': '2.0', 'max': '12.0', 'step': '0.1', 'class': 'form-range'}),
-        initial=2.0,
-        required=False
-    )
-
-
-    maxNum = forms.IntegerField(label="Max number of results", initial=20)
-
-class SearchForm2(forms.Form):
-    site = forms.CharField(label="Site", max_length=64, required=False, widget=ListTextWidget(dataset=Site.objects.values_list("name", flat=True), name="siteList"))
-    date = forms.DateField(label="Date", required=True, widget=forms.TextInput(attrs={'type': 'date'}))
-
 class RecordForm(forms.ModelForm):
     def __init__(self, buttonText, *args, **kwargs):
         super().__init__(*args, **kwargs)

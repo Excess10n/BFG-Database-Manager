@@ -49,16 +49,6 @@ class Fungi(models.Model):
     dateUpdated = models.DateField()
     creatorFK = models.ForeignKey(Member, on_delete=models.RESTRICT, null=False, related_name='Fungi_creator')
     updaterFK = models.ForeignKey(Member, on_delete=models.RESTRICT, null=False, related_name='Fungi_updater')
-    # EXTRA
-    capRadius = models.FloatField(null=True)
-    colourDarkness = models.FloatField(null=True)
-    height = models.FloatField(null=True)
-    centroid = models.IntegerField(default=-1)
-
-    class Meta:
-        indexes = [
-            models.Index(fields=['centroid']),
-        ]
 
     def __str__(self):
         return self.fullName
@@ -69,11 +59,6 @@ class Fungi(models.Model):
         else:
             self.fullName = f"{self.genus} {self.species} {self.variety}"
         super(Fungi, self).save(*args, **kwargs)
-
-class FungiCentroids(models.Model):
-    capRadius = models.FloatField(null=True)
-    colourDarkness = models.FloatField(null=True)
-    height = models.FloatField(null=True)
 
 class FungiCurrent(models.Model):
     currentFungus = models.OneToOneField(Fungi, on_delete=models.CASCADE, null=False)
@@ -103,11 +88,6 @@ class Site(models.Model):
     dateUpdated = models.DateField(auto_now_add=True)
     creatorFK = models.ForeignKey(Member, on_delete=models.RESTRICT, null=False, related_name='Site_creator')
     updaterFK = models.ForeignKey(Member, on_delete=models.RESTRICT, null=False, related_name='Site_updater')
-    # EXTRA FEILDS REMOVE LATER
-    lat = models.FloatField(default=0.0)
-    lon = models.FloatField(default=0.0)
-    def __str__(self):
-        return self.name
 
 class Substrate(models.Model):
     name = models.CharField(max_length=64, null=False, blank=False)
@@ -150,21 +130,13 @@ class Record(models.Model):
     DNATest = models.BooleanField(null=True)
     image = models.ImageField(null=True, blank=True)
     knownDup = models.BooleanField(default=False)
-    # EXTRA FEILDS REMOVE LATER
-    lat = models.FloatField(default=0.0)
-    lon = models.FloatField(default=0.0)
-    dayOfYear = models.IntegerField(default=-1000)
+
     def __str__(self):
         return self.uniqueCode
     
     def save(self, *args, **kwargs):
         self.dayOfYear = self.dateFound.timetuple().tm_yday
         super(Record, self).save(*args, **kwargs)
-    
-    class Meta:
-        indexes = [
-            models.Index(fields=['-dateFound', 'dayOfYear']),
-        ]
 
 class RecordArchive(models.Model):
     recFK = models.OneToOneField(Record, on_delete=models.CASCADE)

@@ -5,9 +5,6 @@ import datetime
 from ...models import Member, Manager, Fungi, FungiCurrent, FungiArchive, Group, Genus, Site, Association, Substrate, Record, RecordArchive
 from django.contrib.auth.models import User
 import os
-# EXTRA
-import OSGridConverter
-import random
 
 ROOT_DIR = os.path.dirname(__file__)
 
@@ -109,21 +106,11 @@ class Command(BaseCommand):
         index = 0
         later_fungi = []
 
-        def customRNG(min, max):
-            diff = max - min
-            num = (random.randrange(0,500) + random.randrange(0,500)) / 1000.0
-            return (num * diff) + min
-
         for sample in fungi_sample:
             if sample["CurrentName"] != sample["NameId"]:
                 later_fungi.append(sample)
                 continue
             index += 1
-            # custom rng
-            base = random.randrange(0,3)
-            radius = customRNG(1,2) + (base*2)
-            darkness = customRNG(0,85) + (base*85)
-            height = customRNG(2,4) + (base*4)
 
             kwargs = {
                 'id': index,
@@ -136,10 +123,7 @@ class Command(BaseCommand):
                 'remarks': sample["Remarks"],
                 'dateUpdated': datetime.datetime.strptime(sample["ChangeDate"], "%d/%m/%Y %H:%M").date(),
                 'creatorFK': Member.objects.get(id=1),
-                'updaterFK': Member.objects.get(id=1),
-                'capRadius': radius,
-                'colourDarkness': darkness,
-                'height': height,
+                'updaterFK': Member.objects.get(id=1)
             }
             Fungi(**kwargs).save()
 
@@ -201,13 +185,6 @@ class Command(BaseCommand):
         for sample in site_sample:
             index += 1
 
-            # EXTRA PROJECT CODE
-            if sample["SiteGR"] != "":
-                try:
-                    result = OSGridConverter.grid2latlong(sample["SiteGR"])
-                except:
-                    pass
-
             if sample["SiteVC"] == '':
                 kwargs = {
                     'id': index,
@@ -237,12 +214,6 @@ class Command(BaseCommand):
                     'creatorFK': Member.objects.get(id=1),
                     'updaterFK': Member.objects.get(id=1),
                 }
-            
-            # EXTRA
-            if sample["SiteGR"] != "":
-                kwargs['lat'] = result.latitude
-                kwargs['lon'] = result.longitude
-
             
             Site(**kwargs).save()
         
@@ -291,21 +262,13 @@ class Command(BaseCommand):
                 fungus = FungiCurrent.objects.get(currentFungus=Fungi.objects.get(uniqueCode=sample["RecFungus"]))
             except:
                 print(sample["RecFungus"])
-                continue
-
-            # EXTRA PROJECT CODE
-            site = Site.objects.get(name=sample["RecSite"])
-            if site.gridRef != "":
-                result = OSGridConverter.grid2latlong(site.gridRef)
-                xdiff = random.randrange(-100,100) / 10000.0
-                ydiff = random.randrange(-100,100) / 10000.0
-                    
+                continue              
             
             kwargs = {
                 'id': index,
                 'uniqueCode': sample["RecUnique"],
                 'fungusFK': fungus,
-                'siteFK': site,
+                'siteFK': Site.objects.get(name=sample["RecSite"]),
                 'recorderFK': Member.objects.get(id=1),
                 'identifierFK': Member.objects.get(id=1),
                 'confirmerFK': Member.objects.get(id=1),
@@ -321,10 +284,6 @@ class Command(BaseCommand):
                 'updaterFK': Member.objects.get(id=1),
                 'firstRecord': first
             }
-            # EXTRA
-            if site.gridRef != "":
-                kwargs['lat'] = result.latitude + xdiff
-                kwargs['lon'] = result.longitude + ydiff
 
             Record(**kwargs).save()
             

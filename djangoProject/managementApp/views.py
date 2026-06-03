@@ -72,11 +72,6 @@ def IndexView(request):
                 "title": "Record export",
                 "desc": "Export for the website or FRDBI",
                 "link": "/export"
-            },
-            {
-                "title": "Fungi search",
-                "desc": "Get Fungi recommendations based on other data related to the fungus",
-                "link": "/search"
             }
         ]
     }

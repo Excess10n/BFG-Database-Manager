@@ -1,7 +1,6 @@
 from django.urls import path, include
 from .views import IndexView, RecordBrowseView, RecordEditView, RecordDelete, FungusView, SiteView, SubstrView, SubstrDelete, AssocView, AssocDelete, ExportView
 from .jsonViews import fungiSuggestions
-from .searchView import SearchView
 
 urlpatterns = [
     path('', IndexView, name='Index'),
@@ -21,8 +20,6 @@ urlpatterns = [
     path('association/<int:id>/delete/', AssocDelete, name='AssocDelete'),
 
     path('export/', ExportView, name='Export'),
-
-    path('search/', SearchView, name='Search'),
 
     # json paths
     path('json/ajax/fungi/', fungiSuggestions, name='FungiSuggestions')
