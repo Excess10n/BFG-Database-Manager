@@ -8,16 +8,6 @@ ROOT_DIR = os.path.dirname(__file__)
 class Command(BaseCommand):
     help = 'yay'
     def handle(self, *args, **options):
-        Record.objects.all().delete()
-        RecordArchive.objects.all().delete()
-        Fungi.objects.all().delete()
-        FungiArchive.objects.all().delete()
-        Group.objects.all().delete()
-        Genus.objects.all().delete()
-        Site.objects.all().delete()
-        Association.objects.all().delete()
-        Substrate.objects.all().delete()
-        Member.objects.all().delete()
-        Manager.objects.all().delete()
+        from django.core.management.utils import get_random_secret_key
 
-        User.objects.all().delete()
+        print(get_random_secret_key())
