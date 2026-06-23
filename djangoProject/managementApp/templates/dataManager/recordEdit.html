@@ -8,11 +8,11 @@
     <h2 class="col-auto me-auto">Bulk Data Input</h2>
     {% if delete %}
         <div class="col-auto">
-            <a href="/record/edit?page={{page.current}}&delete=false&{{param}}" class="button-class"><button type="button" class="btn btn-danger">Delete mode: ON</button></a>
+            <a href="/record/edit?page={{page.current}}&delete=false&{{param}}" class="button-class"><button type="button" class="btn btn-danger">Delete entire record: ON</button></a>
         </div>
     {% else %}
         <div class="col-auto">
-            <a href="/record/edit?page={{page.current}}&delete=true&{{param}}" class="button-class"><button type="button" class="btn btn-success">Delete mode: OFF</button></a>
+            <a href="/record/edit?page={{page.current}}&delete=true&{{param}}" class="button-class"><button type="button" class="btn btn-success">Delete entire record: OFF</button></a>
         </div>
     {% endif %}
     <div class="col-auto">
@@ -20,10 +20,6 @@
     </div>
 </div>
 <div class="row">
-    {% if dupNum == "new" %}
-        <div class="container alert danger">This fungus has already been entered for this site and date,
-        press new again to confirm</div>
-    {% endif %}
     <div class="col-3">
         <form method="POST" enctype="multipart/form-data">
             {% csrf_token %}
@@ -34,8 +30,20 @@
 </div>
 </div>
 <br/><br/>
+{% if initPresent %}
+<h4>Order</h4>
+<form method="POST" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{orderForm|crispy}}
+    <input type="submit" value="Change" class="btn btn-primary">
+</form>
+<br/><br/>
 <div class="container">
     <div class="row border-bottom border-dark">
+        {% if dupNum == "new" %}
+            <div class="container alert danger">This fungus has already been entered for this site and date,
+            press new again to confirm</div>
+        {% endif %}
         <div class="col">
             <form method="POST" enctype="multipart/form-data">
                 {% csrf_token %}
@@ -98,6 +106,7 @@
     {% endif %}
     </ul>
 </nav>
+{% endif %}
 
 {% include "scripts/fungiSuggestions.html" %}
 

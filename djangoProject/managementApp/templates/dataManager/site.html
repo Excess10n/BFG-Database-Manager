@@ -15,7 +15,7 @@
     <a href="/site?page={{page.current}}" class="button-class"><button type="button" class="btn btn-danger">Cancel</button></a>
     <div class="container">
     <div class="row">
-        <div class="col">
+        <div class="col-3">
             <form method="POST" enctype="multipart/form-data">
                 {% csrf_token %}
                 {{newForm|crispy}}
@@ -28,6 +28,19 @@
 {% else %}
     <a href="/site?new=true&page={{page.current}}" class="button-class"><button type="button" class="btn btn-primary">Add new</button></a>
 {% endif %}
+<br/><br/>
+<div class="container">
+<div class="row">
+    <div class="col-3">
+        <form method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+            {{searchForm|crispy}}
+            <input type="submit" value="Search" class="btn btn-primary">
+        </form>
+    </div>
+    <div class="col"></div>
+</div>
+</div>
 <br/><br/>
 <div class="container">
 <div class="row border-bottom border-dark">
@@ -58,16 +71,16 @@
         </li>
     {% else %}
         <li class="page-item">
-            <a class="page-link" href="/site?new={{newText}}&page=1">First</a>
+            <a class="page-link" href="/site?{{param}}&page=1">First</a>
         </li>
     {% endif %}
     {% for x in page.list %}
         {% if x == page.current %}
             <li class="page-item active" aria-current="page">
-                <a class="page-link" href="/site?new={{newText}}&page={{x}}">{{x}}</a>
+                <a class="page-link" href="/site?{{param}}&page={{x}}">{{x}}</a>
             </li>
         {% else %}
-            <li class="page-item"><a class="page-link" href="/site?new={{newText}}&page={{x}}">{{x}}</a></li>
+            <li class="page-item"><a class="page-link" href="/site?{{param}}&page={{x}}">{{x}}</a></li>
         {% endif %}
     {% endfor %}
     {% if page.last %}
@@ -76,7 +89,7 @@
         </li>
     {% else %}
         <li class="page-item">
-            <a class="page-link" href="/site?new={{newText}}&page={{page.pageCount}}">Last</a>
+            <a class="page-link" href="/site?{{param}}&page={{page.pageCount}}">Last</a>
         </li>
     {% endif %}
     </ul>

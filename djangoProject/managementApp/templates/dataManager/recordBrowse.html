@@ -30,11 +30,20 @@
 </div>
 {% for record in records %}
     {% if record.id == expand %}
+    {% if record.DNATest == "Pending" %}
+    <div class="row border-bottom border-light text-danger">
+    {% else %}
     <div class="row border-bottom border-light">
-        <div class="col-2">{{record.fungusFK.currentFungus.fullName}}</div>
+    {% endif %}
+        <div class="col-2">
+            <div>{{ record.fungusFK.currentFungus.fullName }}</div>
+            {% if record.fungusFK.currentFungus.commonName %}
+                <div class="text-muted">({{ record.fungusFK.currentFungus.commonName }})</div>
+            {% endif %}
+        </div>
         <div class="col-2">{{record.siteFK.name}}</div>
         <div class="col-1">{{record.dateFound}}</div>
-        <div class="col-1">{{record.identifierFK.initials}}</div>
+        <div class="col-1" title="{{record.identifierFK.fullName}}">{{record.identifierFK.initials}}</div>
         <div class="col-2">{{record.substrFK.name}}</div>
         <div class="col-2">
             <div class="container">
@@ -43,29 +52,49 @@
                 <div class="row">{{record.assoc3FK.name}}</div>
             </div>
         </div>
-        <div class="col-1">{{record.recorderFK.initials}}</div>
+        <div class="col-1" title="{{record.recorderFK.fullName}}">{{record.recorderFK.initials}}</div>
         <div class="col-1 mt-1"><a href="/record/browse?page={{page.current}}&{{param}}" class="button-class"><button type="button" class="btn btn-primary">less</button></a></div>
     </div>
     <div class="row border-bottom border-dark">
-        <div class="col-2"><img src="/media/{{record.image}}" alt="{{record.image}}"  width="150" height="150"></div>
         <div class="col-2">
-            <div class="row">Confirmer: {{record.confirmerFK.initials}}</div>
-            <div class="row">Collector: {{record.collectorFK.initials}}</div>
+            {% if record.image %}
+                <img src="{{ record.image.url }}" alt="{{ record.image.name }}" width="150" height="150">
+            {% else %}
+                <img src="/media/no_image.png" alt="No image available" width="150" height="150">
+            {% endif %}
+        </div>
+        <div class="col-2">
+            <div class="row" title="{{record.confirmerFK.fullName}}">Confirmer: {{record.confirmerFK.initials}}</div>
+            <div class="row" title="{{record.collectorFK.fullName}}">Collector: {{record.collectorFK.initials}}</div>
+            <div class="row" title="{{record.photographerFK.fullName}}">Photographer: {{record.photographerFK.initials}}</div>
         </div>
         <div class="col-2">
             <div class="row">Lit Ref: {{record.litRef}}</div>
+            {% if record.DNATest == "Pending" %}
+            <div class="row text-danger">DNA Test: {{record.DNATest}}</div>
+            {% else %}
             <div class="row">DNA Test: {{record.DNATest}}</div>
+            {% endif %}
         </div>
         <div class="col-1">Remarks:</div>
         <div class="col-4">{{record.remarks}}</div>
         
     </div>
     {% else %}
+    {% if record.DNATest == "Pending" %}
+    <div class="row border-bottom border-dark text-danger">
+    {% else %}
     <div class="row border-bottom border-dark">
-        <div class="col-2">{{record.fungusFK.currentFungus.fullName}}</div>
+    {% endif %}
+        <div class="col-2">
+            <div>{{ record.fungusFK.currentFungus.fullName }}</div>
+            {% if record.fungusFK.currentFungus.commonName %}
+                <div class="text-muted">({{ record.fungusFK.currentFungus.commonName }})</div>
+            {% endif %}
+        </div>
         <div class="col-2">{{record.siteFK.name}}</div>
         <div class="col-1">{{record.dateFound}}</div>
-        <div class="col-1">{{record.identifierFK.initials}}</div>
+        <div class="col-1" title="{{record.identifierFK.fullName}}">{{record.identifierFK.initials}}</div>
         <div class="col-2">{{record.substrFK.name}}</div>
         <div class="col-2">
             <div class="container">
@@ -74,7 +103,7 @@
                 <div class="row">{{record.assoc3FK.name}}</div>
             </div>
         </div>
-        <div class="col-1">{{record.recorderFK.initials}}</div>
+        <div class="col-1" title="{{record.recorderFK.fullName}}">{{record.recorderFK.initials}}</div>
         <div class="col-1 mt-1"><a href="/record/browse?page={{page.current}}&{{param}}&expand={{record.id}}" class="button-class"><button type="button" class="btn btn-primary">more</button></a></div>
     </div>
     {% endif %}

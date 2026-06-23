@@ -2,7 +2,7 @@ from django.core.management.base import BaseCommand
 from django.core.files.images import ImageFile
 import json
 import datetime
-from ...models import Member, Manager, Fungi, FungiCurrent, FungiArchive, Group, Genus, Site, Association, Substrate, Record, RecordArchive
+from ...models import Member, Fungi, FungiCurrent, FungiArchive, Group, Genus, Site, Association, Substrate, Record, RecordArchive
 from django.contrib.auth.models import User
 import os
 
@@ -20,6 +20,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         Record.objects.all().delete()
         RecordArchive.objects.all().delete()
+        FungiCurrent.objects.all().delete()
         Fungi.objects.all().delete()
         FungiArchive.objects.all().delete()
         Group.objects.all().delete()
@@ -27,10 +28,13 @@ class Command(BaseCommand):
         Site.objects.all().delete()
         Association.objects.all().delete()
         Substrate.objects.all().delete()
-        Member.objects.all().delete()
-        Manager.objects.all().delete()
 
+        Member.objects.all().delete()
         User.objects.all().delete()
+        print("yay")
+
+        with open(ROOT_DIR + '/people.json') as json_file:
+            people_sample = json.load(json_file)
 
         with open(ROOT_DIR + '/association.json') as json_file:
             assoc_sample = json.load(json_file)
@@ -53,30 +57,33 @@ class Command(BaseCommand):
         with open(ROOT_DIR + '/substrate.json') as json_file:
             substr_sample = json.load(json_file)
         
-        # Dummy member that everything will point to:
-        kwargs = {
-            'id': 1,
-            'firstname': 'Bob',
-            'surname': 'Smith',
-            'dateUpdated': datetime.date.today(),
-        }
-        Member(**kwargs).save()
+        # members
+        index = 0
+        for sample in people_sample:
+            index += 1
+            kwargs = {
+                'id': index,
+                'firstname': sample["firstname"],
+                'surname': sample["surname"],
+                'initials': sample["initials"],
+                'dateUpdated': datetime.date.today(),
+            }
 
-        # kwargs = {
-        #     'id': 2,
-        #     'Username': 'BobSmith',
-        #     'Password': 'password123'
-        # }
-        # User(**kwargs).save()
+            if sample["firstname"] == "Penny":
+                User.objects.create_user('PennyCullington', None, 'password123')
+                kwargs['profile'] = User.objects.get(username='PennyCullington')
+
+            Member(**kwargs).save()
+
+            sample["id"] = index
+
         User.objects.create_superuser('AdminUser', None, "6He03.'jOKzs")
-        User.objects.create_user('BobSmith', None, 'password123')
 
-        kwargs = {
-            'id': 1,
-            'profile': User.objects.get(username='BobSmith'),
-            'member': Member.objects.get(id=1)
-        }
-        Manager(**kwargs).save()
+        def getMemberId(initials):
+            for p in people_sample:
+                if p["initials"] == initials:
+                    return p["id"]
+            return 1
 
         # genus
         index = 0
@@ -122,8 +129,8 @@ class Command(BaseCommand):
                 'commonName': sample["CommonName"],
                 'remarks': sample["Remarks"],
                 'dateUpdated': datetime.datetime.strptime(sample["ChangeDate"], "%d/%m/%Y %H:%M").date(),
-                'creatorFK': Member.objects.get(id=1),
-                'updaterFK': Member.objects.get(id=1)
+                'creatorFK': Member.objects.get(id=getMemberId(sample["Creator"])),
+                'updaterFK': Member.objects.get(id=getMemberId(sample["Updater"]))
             }
             Fungi(**kwargs).save()
 
@@ -163,8 +170,8 @@ class Command(BaseCommand):
                 'currentName': current,
                 'remarks': sample["Remarks"],
                 'dateUpdated': datetime.datetime.strptime(sample["ChangeDate"], "%d/%m/%Y %H:%M").date(),
-                'creatorFK': Member.objects.get(id=1),
-                'updaterFK': Member.objects.get(id=1)
+                'creatorFK': Member.objects.get(id=getMemberId(sample["Creator"])),
+                'updaterFK': Member.objects.get(id=getMemberId(sample["Updater"]))
             }
             Fungi(**kwargs).save()
 
@@ -196,8 +203,8 @@ class Command(BaseCommand):
                     'type': sample["SiteType"],
                     'remarks': sample["SiteRemarks"],
                     'dateUpdated': catchNullDate(sample["SiteUpdDate"]),
-                    'creatorFK': Member.objects.get(id=1),
-                    'updaterFK': Member.objects.get(id=1),
+                    'creatorFK': Member.objects.get(id=getMemberId(sample["SiteCreator"])),
+                    'updaterFK': Member.objects.get(id=getMemberId(sample["SiteLastUpdater"])),
                 }
             else:
                 kwargs = {
@@ -211,8 +218,8 @@ class Command(BaseCommand):
                     'type': sample["SiteType"],
                     'remarks': sample["SiteRemarks"],
                     'dateUpdated': catchNullDate(sample["SiteUpdDate"]),
-                    'creatorFK': Member.objects.get(id=1),
-                    'updaterFK': Member.objects.get(id=1),
+                    'creatorFK': Member.objects.get(id=getMemberId(sample["SiteCreator"])),
+                    'updaterFK': Member.objects.get(id=getMemberId(sample["SiteLastUpdater"])),
                 }
             
             Site(**kwargs).save()
@@ -269,10 +276,9 @@ class Command(BaseCommand):
                 'uniqueCode': sample["RecUnique"],
                 'fungusFK': fungus,
                 'siteFK': Site.objects.get(name=sample["RecSite"]),
-                'recorderFK': Member.objects.get(id=1),
-                'identifierFK': Member.objects.get(id=1),
-                'confirmerFK': Member.objects.get(id=1),
-                'collectorFK': Member.objects.get(id=1),
+                'recorderFK': Member.objects.get(id=getMemberId(sample["RecRecorder"])),
+                'identifierFK': Member.objects.get(id=getMemberId(sample["RecIdentifier"])),
+                'collectorFK': Member.objects.get(id=getMemberId(sample["RecCollector"])),
                 'substrFK': Substrate.objects.get(name=sample["RecSubstrate"]),
                 'assoc1FK': Association.objects.get(name=sample["RecAssoc"]),
                 'dateFound': datetime.datetime.strptime(sample["RecDate"], "%d/%m/%Y %H:%M").date(),
@@ -281,9 +287,13 @@ class Command(BaseCommand):
                 'dateSentBMS': catchNullDate(sample["RecSentBMS"]),
                 'remarks': sample["RecRemarks"],
                 'dateUpdated': datetime.datetime.strptime(sample["RecUpdDate"], "%d/%m/%Y %H:%M").date(),
-                'updaterFK': Member.objects.get(id=1),
+                'updaterFK': Member.objects.get(id=getMemberId(sample["RecLastUpdater"])),
                 'firstRecord': first
             }
+
+            num = getMemberId(sample["RecConfirmer"])
+            if num != 1:
+                kwargs['confirmerFK'] = Member.objects.get(id=num)
 
             Record(**kwargs).save()
             

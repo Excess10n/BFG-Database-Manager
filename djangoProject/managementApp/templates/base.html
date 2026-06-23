@@ -42,6 +42,21 @@
     {% block content %}
     {% endblock content %}
     </div>
+    <script>
+        // 1. Save the scroll position right before the page reloads
+        window.addEventListener("beforeunload", () => {
+            localStorage.setItem("scrollPosition", window.scrollY);
+        });
+
+        // 2. Restore the scroll position as soon as the page loads
+        window.addEventListener("load", () => {
+            const savedPosition = localStorage.getItem("scrollPosition");
+            if (savedPosition !== null) {
+                window.scrollTo(0, parseInt(savedPosition, 10));
+                localStorage.removeItem("scrollPosition"); // Clear it so it doesn't break normal visits
+            }
+        });
+    </script>
 </body>
 
 </html>

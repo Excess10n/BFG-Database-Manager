@@ -1,8 +1,7 @@
 from django.contrib import admin
-from .models import Member, Manager, Genus, Group, Fungi, Site, Substrate, Association, Record
+from .models import Member, Genus, Group, Fungi, Site, Substrate, Association, Record
 
 admin.site.register(Member)
-admin.site.register(Manager)
 admin.site.register(Genus)
 admin.site.register(Group)
 admin.site.register(Fungi)

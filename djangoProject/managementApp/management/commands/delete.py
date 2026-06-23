@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from ...models import Member, Manager, Fungi, FungiArchive, Group, Genus, Site, Association, Substrate, Record, RecordArchive
+from ...models import Member, Fungi, FungiArchive, Group, Genus, Site, Association, Substrate, Record, RecordArchive
 from django.contrib.auth.models import User
 import os
 

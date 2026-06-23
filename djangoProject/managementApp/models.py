@@ -7,16 +7,18 @@ from django.contrib.auth.models import User
 class Member(models.Model):
     firstname = models.CharField(max_length=20, null=False, blank=False)
     surname = models.CharField(max_length=20, null=False, blank=False)
-    initials = models.CharField(max_length=5, null=False, blank=False, unique=True)
+    fullName = models.CharField(max_length=196)
+    initials = models.CharField(max_length=5, unique=True)
     dateUpdated = models.DateField()
     isDeleted = models.BooleanField(default=False)
+    profile = models.OneToOneField(User, related_name="user_profile", on_delete=models.CASCADE, null=True, blank=True)
     def __str__(self):
-        return self.initials
-
-class Manager(models.Model):
-    profile = models.OneToOneField(User, related_name="user_profile", on_delete=models.CASCADE)
-    member = models.OneToOneField(Member, on_delete=models.CASCADE)
-
+        return self.fullName
+    
+    def save(self, *args, **kwargs):
+        self.fullName = f"{self.surname}, {self.firstname}"
+        super(Member, self).save(*args, **kwargs)
+    
     class Meta:
         permissions = [
             ("manager", "full db management access")
@@ -44,7 +46,7 @@ class Fungi(models.Model):
     group = models.CharField(max_length=64)
     fullName = models.CharField(max_length=196)
     commonName = models.CharField(max_length=128)
-    currentName = models.ForeignKey('FungiCurrent', on_delete=models.RESTRICT, related_name='Fungi_current', null=True)
+    currentName = models.ForeignKey('FungiCurrent', on_delete=models.CASCADE, related_name='Fungi_current', null=True)
     remarks = models.TextField()
     dateUpdated = models.DateField()
     creatorFK = models.ForeignKey(Member, on_delete=models.RESTRICT, null=False, related_name='Fungi_creator')
@@ -88,6 +90,8 @@ class Site(models.Model):
     dateUpdated = models.DateField(auto_now_add=True)
     creatorFK = models.ForeignKey(Member, on_delete=models.RESTRICT, null=False, related_name='Site_creator')
     updaterFK = models.ForeignKey(Member, on_delete=models.RESTRICT, null=False, related_name='Site_updater')
+    def __str__(self):
+        return self.name
 
 class Substrate(models.Model):
     name = models.CharField(max_length=64, null=False, blank=False)
@@ -106,6 +110,11 @@ class Record(models.Model):
         BUCKS = 'B'
         DATABASE = 'D'
         NONE = 'N'
+    
+    class Dna(models.TextChoices):
+        YES = 'Yes'
+        NO = 'No'
+        PENDING = 'Pending'
 
     uniqueCode = models.CharField(max_length=15, null=False, blank=False, unique=True)
     fungusFK = models.ForeignKey(FungiCurrent, on_delete=models.RESTRICT, null=False)
@@ -127,8 +136,9 @@ class Record(models.Model):
     updaterFK  = models.ForeignKey(Member, on_delete=models.RESTRICT, null=False, related_name='Record_updater')
     firstRecord = models.CharField(max_length=1, choices=First)
     litRef = models.CharField(max_length=64, null=True, blank=True)
-    DNATest = models.BooleanField(null=True)
+    DNATest = models.CharField(max_length=7, choices=Dna, null=True, blank=True)
     image = models.ImageField(null=True, blank=True)
+    photographerFK = models.ForeignKey(Member, on_delete=models.RESTRICT, null=True, related_name='Record_photographer')
     knownDup = models.BooleanField(default=False)
 
     def __str__(self):

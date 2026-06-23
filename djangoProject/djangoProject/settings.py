@@ -124,11 +124,11 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_ROOT = BASE_DIR / 'static/'
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 
 # Media for uploaded files
 MEDIA_ROOT = BASE_DIR / 'media/'
-MEDIA_URL = 'media/'
+MEDIA_URL = '/media/'
 
 # Set up for simple Bootstrap theming
 CRISPY_ALLOWED_TEMPLATE_PACKS = 'bootstrap5'
