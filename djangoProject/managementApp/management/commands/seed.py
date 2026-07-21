@@ -9,7 +9,7 @@ import os
 ROOT_DIR = os.path.dirname(__file__)
 
 def catchNullDate(x):
-    if x == "" or x == "// 00:00":
+    if x == "" or x == "// 00:00" or "x" in x:
         return None
     else:
         return datetime.datetime.strptime(x, "%d/%m/%Y %H:%M").date()
@@ -260,10 +260,11 @@ class Command(BaseCommand):
             else:
                 first = "N"
 
-            if Substrate.objects.filter(name=sample["RecSubstrate"]).count() == 0:
-                continue
-            if Association.objects.filter(name=sample["RecAssoc"]).count() == 0:
-                continue
+            # not used since substr and assoc is now a string value
+            # if Substrate.objects.filter(name=sample["RecSubstrate"]).count() == 0:
+            #     continue
+            # if Association.objects.filter(name=sample["RecAssoc"]).count() == 0:
+            #     continue
 
             try:
                 fungus = FungiCurrent.objects.get(currentFungus=Fungi.objects.get(uniqueCode=sample["RecFungus"]))
@@ -279,8 +280,8 @@ class Command(BaseCommand):
                 'recorderFK': Member.objects.get(id=getMemberId(sample["RecRecorder"])),
                 'identifierFK': Member.objects.get(id=getMemberId(sample["RecIdentifier"])),
                 'collectorFK': Member.objects.get(id=getMemberId(sample["RecCollector"])),
-                'substrFK': Substrate.objects.get(name=sample["RecSubstrate"]),
-                'assoc1FK': Association.objects.get(name=sample["RecAssoc"]),
+                'substrate': sample["RecSubstrate"],
+                'assoc1': sample["RecAssoc"],
                 'dateFound': datetime.datetime.strptime(sample["RecDate"], "%d/%m/%Y %H:%M").date(),
                 'dateEntered': datetime.datetime.strptime(sample["RecEnteredDate"], "%d/%m/%Y %H:%M").date(),
                 'sentBMS': sample["RecSentBMSInd"] == "TRUE",

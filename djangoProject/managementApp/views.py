@@ -1,8 +1,8 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
-from django.db.models import RestrictedError
-from .forms import AssocForm, SubtrForm, SiteForm, SiteSearchForm, RecordOrderForm, RecordFilterForm, RecordForm, RecordInitialForm
+from django.db.models import RestrictedError, Q
+from .forms import AssocForm, SubtrForm, SiteForm, SiteSearchForm, RecordOrderForm, RecordFilterForm, RecordForm, RecordFormBrowse, RecordInitialForm, MemberForm, MemberSearchForm
 from .models import Association, Substrate, Site, Record, Fungi, Member
 from .viewFunctions import getFungiObjects
 import datetime
@@ -59,6 +59,11 @@ def IndexView(request):
                 "link": "/site"
             },
             {
+                "title": "Member details",
+                "desc": "view, add, or change any member details",
+                "link": "/member"
+            },
+            {
                 "title": "Substrate list",
                 "desc": "view, add, or change any substrate details",
                 "link": "/substrate"
@@ -76,6 +81,121 @@ def IndexView(request):
         ]
     }
     return render(request, 'index.html', context)
+
+def manageForm(form, new, edit, request): # function for saving record forms
+    data = form.cleaned_data
+    inst = form.save(commit=False)
+
+    # get values from params
+    if not edit:
+        if request.GET.get("site") != None:
+            inst.siteFK = Site.objects.get(id=request.GET.get("site"))
+        else:
+            messages.add_message(request, messages.ERROR, "Record Site hasn't been entered")
+            return False
+        
+        if request.GET.get("rec") != None:
+            inst.recorderFK = Member.objects.get(id=request.GET.get("rec"))
+        else:
+            messages.add_message(request, messages.ERROR, "Recorder hasn't been entered")
+            return False
+
+        if request.GET.get("date") != None:
+            inst.dateFound = datetime.datetime.strptime(request.GET.get("date"), "%Y-%m-%d").date()
+        else:
+            messages.add_message(request, messages.ERROR, "Record Date hasn't been entered")
+            return False
+
+        # get next unique code (only if this is a new entry)
+        if new:
+            nameCode = inst.recorderFK.initials
+            userCodes = Record.objects.filter(uniqueCode__startswith=f"R{nameCode}").order_by('-uniqueCode')
+            if userCodes.count() == 0:
+                inst.uniqueCode = f"R{nameCode}0000000"
+            else:
+                lastCode = userCodes.first().uniqueCode
+                num = lastCode[-7:]
+                num = int(num) + 1
+                num = str(num)
+                add = 7 - len(num)
+                for i in range(add):
+                    num = "0" + num
+                inst.uniqueCode = lastCode[:-7] + num
+    else:
+        try:
+            inst.site = Site.objects.get(name=data["site"])
+        except:
+            messages.add_message(request, messages.ERROR, f"Site \"{data['site']}\" not found")
+            return False
+        try:
+            inst.recorderFK = Member.objects.get(fullName=data["recorderFK"])
+        except:
+            messages.add_message(request, messages.ERROR, f"Name \"{data['recorderFK']}\" not found")
+            return False
+        if data['DNAseq'] != "" or data['DNAseq'] != None:
+            if data['DNATest'] != "Yes":
+                inst.DNAseq = ""
+                messages.add_message(request, messages.ERROR, "DNA Sequence not submitted because the DNA Test? option has not been set to yes")
+
+
+    
+    # Fungus needs to be the fungi object not text
+    try:
+        current, _, _ = getFungiObjects(data["fungus"])
+        inst.fungusFK = current
+    except:
+        messages.add_message(request, messages.ERROR, f"Fungus \"{data['fungus']}\" not found")
+        return False
+    
+    try:
+        inst.identifierFK = Member.objects.get(fullName=data["identifierFK"])
+    except:
+        messages.add_message(request, messages.ERROR, f"Name \"{data['identifierFK']}\" not found")
+        return False
+    try:
+        if data["confirmerFK"] != "":
+            inst.confirmerFK = Member.objects.get(fullName=data["confirmerFK"])
+    except:
+        messages.add_message(request, messages.ERROR, f"Name \"{data['confirmerFK']}\" not found")
+        return False
+    try:
+        inst.collectorFK = Member.objects.get(fullName=data["collectorFK"])
+    except:
+        messages.add_message(request, messages.ERROR, f"Name \"{data['collectorFK']}\" not found")
+        return False
+    try:
+        if data["photographerFK"] != "":
+            inst.photographerFK = Member.objects.get(fullName=data["photographerFK"])
+    except:
+        messages.add_message(request, messages.ERROR, f"Name \"{data['photographerFK']}\" not found")
+        return False
+    
+    if data["substrate"] == "":
+        messages.add_message(request, messages.ERROR, f"Substrate is empty")
+        return False
+    else:
+        inst.substrate = data["substrate"]
+    if data["assoc1"] != "":
+        inst.assoc1 = data["assoc1"]
+    if data["assoc2"] != "":
+        inst.assoc2 = data["assoc2"]
+    if data["assoc3"] != "":
+        inst.assoc3 = data["assoc3"]
+
+    # check if this record is the first in the site, bucks, or database
+    if new:
+        if Record.objects.filter(fungusFK=inst.fungusFK).count() == 0:
+            inst.firstRecord = 'D'
+        elif Record.objects.filter(fungusFK=inst.fungusFK, siteFK__in=Site.objects.filter(VC=24)).count() == 0:
+            inst.firstRecord = 'B'
+        elif Record.objects.filter(fungusFK=inst.fungusFK, siteFK=inst.siteFK).count() == 0:
+            inst.firstRecord = 'S'
+    
+    inst.updaterFK = request.user.user_profile
+    inst.dateUpdated = datetime.datetime.now()
+
+    inst.save()
+    return True
 
 def RecordEditView(request):
     if not request.user.is_authenticated:
@@ -142,91 +262,6 @@ def RecordEditView(request):
 
     page = {"current": currentPage, "first": currentPage == 1, "last": currentPage == pageCount, "pageCount": pageCount, "list": pageList}
 
-    def manageForm(form, new): # function for saving record forms
-        data = form.cleaned_data
-        inst = form.save(commit=False)
-
-        # get values from params
-        if request.GET.get("site") != None:
-            inst.siteFK = Site.objects.get(id=request.GET.get("site"))
-        else:
-            messages.add_message(request, messages.ERROR, "Record Site hasn't been entered")
-            return False
-        
-        if request.GET.get("rec") != None:
-            inst.recorderFK = Member.objects.get(id=request.GET.get("rec"))
-        else:
-            messages.add_message(request, messages.ERROR, "Recorder hasn't been entered")
-            return False
-
-        if request.GET.get("date") != None:
-            inst.dateFound = datetime.datetime.strptime(request.GET.get("date"), "%Y-%m-%d").date()
-        else:
-            messages.add_message(request, messages.ERROR, "Record Date hasn't been entered")
-            return False
-
-        # get next unique code (only if this is a new entry)
-        if new:
-            nameCode = inst.recorderFK.initials
-            userCodes = Record.objects.filter(uniqueCode__startswith=f"R{nameCode}").order_by('-uniqueCode')
-            if userCodes.count() == 0:
-                inst.uniqueCode = f"R{nameCode}0000000"
-            else:
-                lastCode = userCodes.first().uniqueCode
-                num = lastCode[-7:]
-                num = int(num) + 1
-                num = str(num)
-                add = 7 - len(num)
-                for i in range(add):
-                    num = "0" + num
-                inst.uniqueCode = lastCode[:-7] + num
-        
-        # Fungus needs to be the fungi object not text
-        try:
-            current, _, _ = getFungiObjects(data["fungus"])
-            inst.fungusFK = current
-        except:
-            messages.add_message(request, messages.ERROR, f"Fungus \"{data['fungus']}\" not found")
-            return False
-        
-        try:
-            inst.identifierFK = Member.objects.get(fullName=data["identifierFK"])
-        except:
-            messages.add_message(request, messages.ERROR, f"Name \"{data['identifierFK']}\" not found")
-            return False
-        try:
-            if data["confirmerFK"] != "":
-                inst.confirmerFK = Member.objects.get(fullName=data["confirmerFK"])
-        except:
-            messages.add_message(request, messages.ERROR, f"Name \"{data['confirmerFK']}\" not found")
-            return False
-        try:
-            inst.collectorFK = Member.objects.get(fullName=data["collectorFK"])
-        except:
-            messages.add_message(request, messages.ERROR, f"Name \"{data['collectorFK']}\" not found")
-            return False
-        try:
-            if data["photographerFK"] != "":
-                inst.photographerFK = Member.objects.get(fullName=data["photographerFK"])
-        except:
-            messages.add_message(request, messages.ERROR, f"Name \"{data['photographerFK']}\" not found")
-            return False
-
-        # check if this record is the first in the site, bucks, or database
-        if new:
-            if Record.objects.filter(fungusFK=inst.fungusFK).count() == 0:
-                inst.firstRecord = 'D'
-            elif Record.objects.filter(fungusFK=inst.fungusFK, siteFK__in=Site.objects.filter(VC=24)).count() == 0:
-                inst.firstRecord = 'B'
-            elif Record.objects.filter(fungusFK=inst.fungusFK, siteFK=inst.siteFK).count() == 0:
-                inst.firstRecord = 'S'
-        
-        inst.updaterFK = request.user.user_profile
-        inst.dateUpdated = datetime.datetime.now()
-
-        inst.save()
-        return True
-
     # record orderings
     order = request.GET.get("order")
     if order == None:
@@ -248,19 +283,26 @@ def RecordEditView(request):
         init = {
             "fungus": record.fungusFK.currentFungus.fullName,
             "collectorFK": record.collectorFK.fullName,
-            "identifierFK": record.identifierFK.fullName
+            "identifierFK": record.identifierFK.fullName,
+            "substrate": record.substrate
         }
         if record.confirmerFK != None:
             init["confirmerFK"] = record.confirmerFK.fullName
         if record.photographerFK != None:
             init["photographerFK"] = record.photographerFK.fullName
+        if record.assoc1 != None:
+            init["assoc1"] = record.assoc1
+        if record.assoc2 != None:
+            init["assoc2"] = record.assoc2
+        if record.assoc3 != None:
+            init["assoc3"] = record.assoc3
 
         form = RecordForm("Change", request.POST or None, request.FILES or None, instance=record, initial=init, prefix=f"form{index}")
         if form.is_valid():
-            done = manageForm(form, False)
+            done = manageForm(form, False, False, request)
             if done:
                 messages.add_message(request, messages.SUCCESS, "Edited record")
-            return redirect(f"/record/edit?page={page['current']}&delete={deleteText}&{param}")
+            return redirect(f"/record/edit?page={page['current']}&delete={deleteText}&{param}&last={record.id}")
         
         dic = {"form": form, "id": record.id, "name": record.fungusFK.currentFungus.fullName, "date": record.dateFound}
         if order == "2":
@@ -276,12 +318,12 @@ def RecordEditView(request):
     # new form
     newForm = RecordForm("New", request.POST or None, request.FILES or None, prefix="form0")
     if newForm.is_valid():
-        done = manageForm(newForm, True)
+        done = manageForm(newForm, True, False, request)
         if done:
             messages.add_message(request, messages.SUCCESS, "Added new record")
-        return redirect(f"/record/edit?page={page['current']}&delete={deleteText}&{param}")
+        return redirect(f"/record/edit?page={page['current']}&delete={deleteText}&{param}&last=new")
 
-    context = {"formList": formList, "newForm": newForm, "initForm": initForm, "orderForm": orderForm, "page": page, "param": param, "delete": delete, "deleteText": deleteText, "initPresent": initPresent}
+    context = {"formList": formList, "newForm": newForm, "initForm": initForm, "orderForm": orderForm, "page": page, "param": param, "delete": delete, "deleteText": deleteText, "initPresent": initPresent, "last": request.GET.get('last')}
     return render(request, 'dataManager/recordEdit.html', context)
 
 def RecordDelete(request, id):
@@ -426,20 +468,12 @@ def RecordBrowseView(request):
                 redirect(RecordBrowseView)
 
         if data["substrate"] != "" and data["substrate"] != None:
-            try:
-                substrate = Substrate.objects.get(name=data["substrate"])
-                param += f"subtsr={data['substrate']}&"
-            except:
-                messages.add_message(request, messages.ERROR, f"Name \"{data['substrate']}\" not found")
-                redirect(RecordBrowseView)
+            substrate = data["substrate"]
+            param += f"subtsr={data['substrate']}&"
 
         if data["association"] != "" and data["association"] != None:
-            try:
-                association = Association.objects.get(name=data["association"])
-                param += f"assoc={data['association']}&"
-            except:
-                messages.add_message(request, messages.ERROR, f"Name \"{data['association']}\" not found")
-                redirect(RecordBrowseView)
+            association = data["association"]
+            param += f"assoc={data['association']}&"
 
         if data["dateFrom"] != "" and data["dateFrom"] != None:
             dateFrom = data["dateFrom"]
@@ -463,6 +497,17 @@ def RecordBrowseView(request):
             param = param[:-1]
 
         records = Record.objects.all()
+
+        # substrate and assoc filters
+        if substrate != None:
+            records = records.filter(substrate__icontains=substrate)
+        if association != None:
+            records = records.filter(
+                Q(assoc1__icontains=association)
+                | Q(assoc2__icontains=association)
+                | Q(assoc3__icontains=association)
+            )
+
         records2 = []
         for record in records:
             # repeatative code time
@@ -488,12 +533,7 @@ def RecordBrowseView(request):
             if confirmer != None:
                 if record.confirmerFK != confirmer:
                     continue
-            if substrate != None:
-                if record.substrFK != substrate:
-                    continue
-            if association != None:
-                if record.assoc1FK != association and record.assoc2FK != association and record.assoc3FK != association:
-                    continue
+            
             # ---------------------
             if dateSingle != None:
                 if not (dateSingle == record.dateFound):
@@ -541,6 +581,76 @@ def RecordBrowseView(request):
     context = {"records": records, "param": param, "form": form, "page": page, "expand": expand}
     return render(request, 'dataManager/recordBrowse.html', context)
 
+def RecordEditSingle(request, id):
+    if not request.user.is_authenticated:
+        raise PermissionDenied()
+    
+    record = get_object_or_404(Record, id=id)
+
+    param = ""
+    deleteOption = False
+    for key, value in request.GET.items():
+        if key == "deleteOption":
+            deleteOption = value == "True"
+            continue
+        if value is not None:
+            param += f"{key}={value}&"
+    if param:
+        param = param[:-1]
+
+    init = {
+        "fungus": record.fungusFK.currentFungus.fullName,
+        "collectorFK": record.collectorFK.fullName,
+        "identifierFK": record.identifierFK.fullName,
+        "recorderFK": record.recorderFK.fullName,
+        "substrate": record.substrate,
+        "site": record.siteFK.name
+    }
+    if record.confirmerFK != None:
+        init["confirmerFK"] = record.confirmerFK.fullName
+    if record.photographerFK != None:
+        init["photographerFK"] = record.photographerFK.fullName
+    if record.assoc1 != None:
+        init["assoc1"] = record.assoc1
+    if record.assoc2 != None:
+        init["assoc2"] = record.assoc2
+    if record.assoc3 != None:
+        init["assoc3"] = record.assoc3
+
+    form = RecordFormBrowse("Change", request.POST or None, request.FILES or None, initial=init, instance=record)
+    if form.is_valid():
+        done = manageForm(form, False, True, request)
+        if done:
+            messages.add_message(request, messages.SUCCESS, "Edited record")
+        return redirect(f"/record/browse/{id}?{param}")
+    
+    context = {"record": record, "form": form, "param": param, "deleteOption": deleteOption}
+    return render(request, 'dataManager/recordEditSingle.html', context)
+
+def RecordDelete2(request, id):
+    if not request.user.is_authenticated:
+        raise PermissionDenied()
+    
+    record = get_object_or_404(Record, id=id)
+
+    # get the query paramters to be redirected to
+    param = ""
+    for key, value in request.GET.items():
+        if value is not None:
+            param += f"{key}={value}&"
+    if param:
+        param = param[:-1]
+    
+    if request.method == "POST":
+        try:
+            record.delete()
+            messages.add_message(request, messages.SUCCESS, "Record deleted")
+        except:
+            messages.add_message(request, messages.ERROR, "Record failed to delete")
+            return redirect(f"/record/browse/{id}?{param}")
+    
+    return redirect('/record/browse?' + param)
+
 def FungusView(request):
     context = {}
     return render(request, 'dataManager/fungus.html', context)
@@ -563,24 +673,26 @@ def SiteView(request):
 
     # search
     site = request.GET.get("search")
-    searchForm = SiteSearchForm(request.POST or None, initial={"site": site})
-    if searchForm.is_valid():
-        site = searchForm.cleaned_data["site"]
-        param += f"search={site}&"
-        return redirect('/site?' + param)
+    searchForm = SiteSearchForm(request.POST or None, initial={"site": site}, prefix="searchForm")
+    if request.method == "POST" and "searchForm-site" in request.POST:
+        if searchForm.is_valid():
+            site = searchForm.cleaned_data["site"]
+            param += f"search={site}&"
+            return redirect('/site?' + param)
     else:
         if site != None:
             param += f"search={site}&"
 
     # form
-    form = SiteForm(request.POST or None)
+    form = SiteForm("Add", request.POST or None, prefix="newForm")
     if form.is_valid():
         inst = form.save(commit=False)
         inst.creatorFK = request.user.user_profile
         inst.updaterFK = request.user.user_profile
         inst.dateUpdated = datetime.datetime.now()
         inst.save()
-        redirect('/site?' + param)
+        messages.add_message(request, messages.SUCCESS, "Added new site")
+        return redirect('/site?' + param)
     
     if site != None:
         sites = Site.objects.all().filter(reportingName__icontains=site).order_by('name')
@@ -597,10 +709,170 @@ def SiteView(request):
 
     page = {"current": currentPage, "first": currentPage == 1, "last": currentPage == pageCount, "pageCount": pageCount, "list": pageList}
 
-    
 
     context = {"newForm": form, "searchForm": searchForm, "new": new, "sites": sites, "param": param, "page": page}
     return render(request, 'dataManager/site.html', context)
+
+def SiteEditSingle(request, id):
+    if not request.user.is_authenticated:
+        raise PermissionDenied()
+    
+    site = get_object_or_404(Site, id=id)
+
+    param = ""
+    deleteOption = False
+    for key, value in request.GET.items():
+        if key == "deleteOption":
+            deleteOption = value == "True"
+            continue
+        if value is not None:
+            param += f"{key}={value}&"
+    if param:
+        param = param[:-1]
+
+    form = SiteForm("Change", request.POST or None, instance=site)
+    if form.is_valid():
+        inst = form.save(commit=False)
+        inst.updaterFK = request.user.user_profile
+        inst.dateUpdated = datetime.datetime.now()
+        inst.save()
+        messages.add_message(request, messages.SUCCESS, "Edited site")
+        return redirect(f"/site/{id}?{param}")
+    
+    context = {"site": site, "form": form, "param": param, "deleteOption": deleteOption}
+    return render(request, 'dataManager/siteEditSingle.html', context)
+
+def SiteDelete(request, id):
+    if not request.user.is_authenticated:
+        raise PermissionDenied()
+    
+    site = get_object_or_404(Site, id=id)
+
+    # get the query paramters to be redirected to
+    param = ""
+    for key, value in request.GET.items():
+        if value is not None:
+            param += f"{key}={value}&"
+    if param:
+        param = param[:-1]
+    
+    if request.method == "POST":
+        try:
+            site.delete()
+            messages.add_message(request, messages.SUCCESS, "Site deleted")
+        except RestrictedError: # if the site is being used by a record the delete will be blocked
+            messages.add_message(request, messages.ERROR, "Delete failed: Site is used in 1 or more records")
+            return redirect(f"/site/{id}?{param}")
+        except:
+            messages.add_message(request, messages.ERROR, "Site failed to delete")
+            return redirect(f"/site/{id}?{param}")
+    
+    return redirect('/site?' + param)
+
+# ------------
+# MEMBER VIEWS
+# ------------
+def MemberView(request):
+    if not request.user.is_authenticated:
+        raise PermissionDenied()
+    
+    param = ""
+    # is user entering a new site
+    new = request.GET.get("new") == "true"
+    if new:
+        param += "new=true&"
+    else:
+        param += "new=false&"
+
+    # search
+    member = request.GET.get("search")
+    searchForm = MemberSearchForm(request.POST or None, initial={"member": member}, prefix="searchForm")
+    if request.method == "POST" and "searchForm-member" in request.POST:
+        if searchForm.is_valid():
+            member = searchForm.cleaned_data["member"]
+            param += f"search={member}&"
+            return redirect('/member?' + param)
+    else:
+        if member != None:
+            param += f"search={member}&"
+
+    # form
+    form = MemberForm("Add", request.POST or None, prefix="newForm")
+    if form.is_valid():
+        inst = form.save(commit=False)
+        inst.dateUpdated = datetime.datetime.now()
+        inst.save()
+        messages.add_message(request, messages.SUCCESS, "Added new member")
+        return redirect('/member?' + param)
+    
+    if member != None:
+        members = Member.objects.all().filter(fullName__icontains=member).order_by('firstname')
+    else:
+        members = Member.objects.all().order_by('firstname')
+
+    # pagination
+    currentPage = request.GET.get("page")
+    currentPage, pageCount, start, end, pageList = pagination(currentPage, members.count())
+    members = members[start:end]
+
+    page = {"current": currentPage, "first": currentPage == 1, "last": currentPage == pageCount, "pageCount": pageCount, "list": pageList}
+
+
+    context = {"newForm": form, "searchForm": searchForm, "new": new, "members": members, "param": param, "page": page}
+    return render(request, 'dataManager/member.html', context)
+
+def MemberEditSingle(request, id):
+    if not request.user.is_authenticated:
+        raise PermissionDenied()
+    
+    member = get_object_or_404(Member, id=id)
+
+    param = ""
+    deleteOption = False
+    for key, value in request.GET.items():
+        if key == "deleteOption":
+            deleteOption = value == "True"
+            continue
+        if value is not None:
+            param += f"{key}={value}&"
+    if param:
+        param = param[:-1]
+
+    form = MemberForm("Change", request.POST or None, instance=member)
+    if form.is_valid():
+        inst = form.save(commit=False)
+        inst.dateUpdated = datetime.datetime.now()
+        inst.save()
+        messages.add_message(request, messages.SUCCESS, "Edited member")
+        return redirect(f"/member/{id}?{param}")
+    
+    context = {"member": member, "form": form, "param": param, "deleteOption": deleteOption}
+    return render(request, 'dataManager/memberEditSingle.html', context)
+
+def MemberDelete(request, id):
+    if not request.user.is_authenticated:
+        raise PermissionDenied()
+    
+    member = get_object_or_404(Member, id=id)
+
+    # get the query paramters to be redirected to
+    param = ""
+    for key, value in request.GET.items():
+        if value is not None:
+            param += f"{key}={value}&"
+    if param:
+        param = param[:-1]
+    
+    if request.method == "POST":
+        member.firstname = "DELETED"
+        member.surname = "DELETED"
+        member.initials = "DEL."
+        member.isDeleted = True
+        member.dateUpdated = datetime.datetime.now()
+        member.save()
+        messages.add_message(request, messages.SUCCESS, "Member deleted")
+    
+    return redirect('/member?' + param)
 
 # ---------------
 # SUBSTRATE VIEWS

@@ -31,11 +31,13 @@
     </div>
     </div>
     <br>
+    {% block messages %}
     {% if messages %}
         {% for message in messages %}
             <div class="container alert {{message.tags}}">{{message}}</div>
         {% endfor %}
     {% endif %}
+    {% endblock messages %}
     {% endblock header %}
 
     <div class="container p-3">

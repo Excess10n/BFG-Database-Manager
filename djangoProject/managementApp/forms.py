@@ -38,12 +38,12 @@ class RecordForm(forms.ModelForm):
             Div(
                 Div(
                     Div('fungus'),
-                    Div('substrFK'),
+                    Div('substrate'),
                 css_class="col"),
                 Div(
-                    Div('assoc1FK'),
-                    Div('assoc2FK'),
-                    Div('assoc3FK'),
+                    Div('assoc1'),
+                    Div('assoc2'),
+                    Div('assoc3'),
                 css_class="col"),
                 Div(
                     Div('collectorFK'),
@@ -67,9 +67,6 @@ class RecordForm(forms.ModelForm):
             ),
         )
 
-        self.fields['assoc1FK'].required = False
-        self.fields['assoc2FK'].required = False
-        self.fields['assoc3FK'].required = False
         self.fields['remarks'].required = False
         self.fields['DNATest'].required = False
     
@@ -79,14 +76,19 @@ class RecordForm(forms.ModelForm):
     confirmerFK = forms.CharField(label="Confirmer", max_length=128, required=False, widget=ListTextWidget(dataset=Member.objects.values_list("fullName", flat=True), name="confirmerList"))
     photographerFK = forms.CharField(label="Photographer", max_length=128, required=False, widget=ListTextWidget(dataset=Member.objects.values_list("fullName", flat=True), name="photographerList"))
 
+    substrate = forms.CharField(label="Substrate", max_length=128, required=True, widget=ListTextWidget(dataset=Substrate.objects.values_list("name", flat=True), name="substrateList"))
+    assoc1 = forms.CharField(label="Association 1", max_length=128, required=False, widget=ListTextWidget(dataset=list(Association.objects.values_list("name", flat=True)) + list(Association.objects.values_list("latin", flat=True)), name="assoc1List"))
+    assoc2 = forms.CharField(label="Association 2", max_length=128, required=False, widget=ListTextWidget(dataset=list(Association.objects.values_list("name", flat=True)) + list(Association.objects.values_list("latin", flat=True)), name="assoc2List"))
+    assoc3 = forms.CharField(label="Association 3", max_length=128, required=False, widget=ListTextWidget(dataset=list(Association.objects.values_list("name", flat=True)) + list(Association.objects.values_list("latin", flat=True)), name="assoc3List"))
+
     class Meta:
         model = Record
         fields = [
             #"fungusFK",
-            "substrFK",
-            "assoc1FK",
-            "assoc2FK",
-            "assoc3FK",
+            #"substrFK",
+            #"assoc1FK",
+            #"assoc2FK",
+            #"assoc3FK",
             #"collectorFK",
             #"identifierFK",
             #"confirmerFK",
@@ -97,10 +99,10 @@ class RecordForm(forms.ModelForm):
         ]
         labels = {
             #"fungusFK": "Fungus",
-            "substrFK": "Substrate",
-            "assoc1FK": "Association 1",
-            "assoc2FK": "Association 2",
-            "assoc3FK": "Association 3",
+            #"substrFK": "Substrate",
+            #"assoc1FK": "Association 1",
+            #"assoc2FK": "Association 2",
+            #"assoc3FK": "Association 3",
             #"collectorFK": "Collector",
             #"identifierFK": "Indentifier",
             #"confirmerFK": "Confirmer",
@@ -114,6 +116,92 @@ class RecordForm(forms.ModelForm):
             "remarks": forms.Textarea(attrs={"rows": 5}),
         }
 
+class RecordFormBrowse(forms.ModelForm):
+    def __init__(self, buttonText, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        #self.helper.form_show_labels = False
+        self.helper.layout = Layout(
+            Div(
+                Div(
+                    Div('fungus'),
+                    Div('site'),
+                    Div('dateFound'),
+                css_class="col"),
+                Div(
+                    Div('substrate'),
+                    Div('assoc1'),
+                    Div('assoc2'),
+                    Div('assoc3'),
+                css_class="col"),
+                Div(
+                    Div('recorderFK'),
+                    Div('collectorFK'),
+                    Div('identifierFK'),
+                    Div('confirmerFK'),
+                css_class="col"),
+                Div(
+                    Div('remarks'),
+                    Div('photographerFK'),
+                css_class="col"),
+                Div(
+                    Div('litRef'),
+                    Div('DNATest'),
+                    Div('image'),
+                css_class="col"),
+                Div(
+                    bootstrap.FormActions(Submit('submit', buttonText, css_class='btn btn-primary')),
+                    css_class='col-1 mt-3'
+                    ),
+                css_class='row',
+            ),
+            Div(
+                Div(
+                    Div('DNAseq'),
+                    css_class="col"
+                ),
+                css_class="row"
+            )
+        )
+
+        self.fields['remarks'].required = False
+        self.fields['DNATest'].required = False
+        self.fields['DNAseq'].required = False
+    
+    fungus = forms.CharField(label="Fungus", max_length=64, required=True, widget=forms.TextInput(attrs={"list": "fungusList", "autocomplete": "off"}))
+    site = forms.CharField(label="Site", max_length=128, required=True, widget=ListTextWidget(dataset=Site.objects.values_list("name", flat=True), name="siteList"))
+    recorderFK = forms.CharField(label="Recorder", max_length=128, required=True, widget=ListTextWidget(dataset=Member.objects.values_list("fullName", flat=True), name="recorderList"))
+    collectorFK = forms.CharField(label="Collector", max_length=128, required=True, widget=ListTextWidget(dataset=Member.objects.values_list("fullName", flat=True), name="collectorList"))
+    identifierFK = forms.CharField(label="Identifier", max_length=128, required=True, widget=ListTextWidget(dataset=Member.objects.values_list("fullName", flat=True), name="identifierList"))
+    confirmerFK = forms.CharField(label="Confirmer", max_length=128, required=False, widget=ListTextWidget(dataset=Member.objects.values_list("fullName", flat=True), name="confirmerList"))
+    photographerFK = forms.CharField(label="Photographer", max_length=128, required=False, widget=ListTextWidget(dataset=Member.objects.values_list("fullName", flat=True), name="photographerList"))
+
+    substrate = forms.CharField(label="Substrate", max_length=128, required=True, widget=ListTextWidget(dataset=Substrate.objects.values_list("name", flat=True), name="substrateList"))
+    assoc1 = forms.CharField(label="Association 1", max_length=128, required=False, widget=ListTextWidget(dataset=list(Association.objects.values_list("name", flat=True)) + list(Association.objects.values_list("latin", flat=True)), name="assoc1List"))
+    assoc2 = forms.CharField(label="Association 2", max_length=128, required=False, widget=ListTextWidget(dataset=list(Association.objects.values_list("name", flat=True)) + list(Association.objects.values_list("latin", flat=True)), name="assoc2List"))
+    assoc3 = forms.CharField(label="Association 3", max_length=128, required=False, widget=ListTextWidget(dataset=list(Association.objects.values_list("name", flat=True)) + list(Association.objects.values_list("latin", flat=True)), name="assoc3List"))
+
+    class Meta:
+        model = Record
+        fields = [
+            "remarks",
+            "litRef",
+            "DNATest",
+            "DNAseq",
+            "image",
+            "dateFound"
+        ]
+        labels = {
+            "remarks": "Remarks",
+            "litRef": "Lit Ref.",
+            "DNATest": "DNA Test?",
+            "image": "Image",
+            "dateFound": "Date",
+            "DNAseq": "DNA Sequence"
+        }
+        widgets = {
+            "remarks": forms.Textarea(attrs={"rows": 5}),
+        }
 
 class RecordInitialForm(forms.Form):
     date = forms.DateField(label="Date of record", widget=forms.TextInput(attrs={'type': 'date'}))
@@ -184,6 +272,32 @@ class RecordOrderForm(forms.Form):
     )
 
 class SiteForm(forms.ModelForm):
+    def __init__(self, buttonText, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.layout = Layout(
+            Div(
+                Div('name', css_class="col-3"),
+                Div('reportingName', css_class="col-3"),
+                Div('gridRef', css_class="col-3"),
+                Div('county', css_class="col-3"),
+                Div('VC', css_class="col-1"),
+                Div('country', css_class="col-3"),
+                Div('type', css_class="col-3"),
+                Div('remarks', css_class='col-4'),
+                Div(bootstrap.FormActions(
+                    Submit('submit', buttonText, css_class='btn btn-primary')),
+                    css_class='col'
+                    ),
+                css_class='row',
+            )
+        )
+
+        self.fields['remarks'].required = False
+        self.fields['type'].required = False
+        self.fields['country'].required = False
+        self.fields['VC'].required = False
+
     class Meta:
         model = Site
         fields = [
@@ -196,6 +310,16 @@ class SiteForm(forms.ModelForm):
             "type",
             "remarks"
         ]
+        labels = {
+            "name": "Name",
+            "reportingName": "Reporting Name",
+            "gridRef": "Grid Reference",
+            "county": "County",
+            "VC": "VC",
+            "country": "Country",
+            "type": "Site Type",
+            "remarks": "Remarks"
+        }
         # exclude = [
         #     "dateUpdated",
         #     "creatorFK",
@@ -204,11 +328,45 @@ class SiteForm(forms.ModelForm):
         widgets = {
             "county": ListTextWidget(dataset=Site.objects.values_list("county", flat=True), name="countyList"),
             "country": ListTextWidget(dataset=Site.objects.values_list("country", flat=True), name="countryList"),
-            "type": ListTextWidget(dataset=Site.objects.values_list("type", flat=True), name="typeList")
+            "type": ListTextWidget(dataset=Site.objects.values_list("type", flat=True), name="typeList"),
+            "remarks": forms.Textarea(attrs={"rows": 5}),
         }
 
 class SiteSearchForm(forms.Form):
-    site = forms.CharField(label="Site", max_length=64, required=False, widget=ListTextWidget(dataset=Site.objects.values_list("reportingName", flat=True), name="siteList"))
+    site = forms.CharField(label="Site Search", max_length=64, required=False, widget=ListTextWidget(dataset=Site.objects.values_list("reportingName", flat=True), name="siteList"))
+
+class MemberForm(forms.ModelForm):
+    def __init__(self, buttonText, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.layout = Layout(
+            Div(
+                Div('firstname', css_class="col-2"),
+                Div('surname', css_class="col-2"),
+                Div('initials', css_class="col-1"),
+                Div(bootstrap.FormActions(
+                    Submit('submit', buttonText, css_class='btn btn-primary')),
+                    css_class='col'
+                    ),
+                css_class='row',
+            )
+        )
+
+    class Meta:
+        model = Member
+        fields = [
+            "firstname",
+            "surname",
+            "initials"
+        ]
+        labels = {
+            "firstname": "First Name",
+            "surname": "Surname",
+            "initials": "Initials"
+        }
+
+class MemberSearchForm(forms.Form):
+    member = forms.CharField(label="Member Search", max_length=64, required=False, widget=ListTextWidget(dataset=Member.objects.values_list("fullName", flat=True), name="memberList"))
 
 class SubtrForm(forms.ModelForm):
     def __init__(self, buttonText, *args, **kwargs):

@@ -44,16 +44,18 @@
         <div class="col-2">{{record.siteFK.name}}</div>
         <div class="col-1">{{record.dateFound}}</div>
         <div class="col-1" title="{{record.identifierFK.fullName}}">{{record.identifierFK.initials}}</div>
-        <div class="col-2">{{record.substrFK.name}}</div>
+        <div class="col-2">{{record.substrate}}</div>
         <div class="col-2">
             <div class="container">
-                <div class="row">{{record.assoc1FK.name}}</div>
-                <div class="row">{{record.assoc2FK.name}}</div>
-                <div class="row">{{record.assoc3FK.name}}</div>
+                <div class="row">{{record.assoc1}}</div>
+                <div class="row">{{record.assoc2}}</div>
+                <div class="row">{{record.assoc3}}</div>
             </div>
         </div>
         <div class="col-1" title="{{record.recorderFK.fullName}}">{{record.recorderFK.initials}}</div>
-        <div class="col-1 mt-1"><a href="/record/browse?page={{page.current}}&{{param}}" class="button-class"><button type="button" class="btn btn-primary">less</button></a></div>
+        <div class="col-1 mt-1">
+            <a href="/record/browse?page={{page.current}}&{{param}}" class="button-class"><button type="button" class="btn btn-primary">less</button></a>
+        </div>
     </div>
     <div class="row border-bottom border-dark">
         <div class="col-2">
@@ -78,6 +80,9 @@
         </div>
         <div class="col-1">Remarks:</div>
         <div class="col-4">{{record.remarks}}</div>
+        <div class="col-1 mt-1">
+            <a href="/record/browse/{{record.id}}?page={{page.current}}&{{param}}&expand={{record.id}}" class="button-class"><button type="button" class="btn btn-primary">edit</button></a>
+        </div>
         
     </div>
     {% else %}
@@ -95,16 +100,18 @@
         <div class="col-2">{{record.siteFK.name}}</div>
         <div class="col-1">{{record.dateFound}}</div>
         <div class="col-1" title="{{record.identifierFK.fullName}}">{{record.identifierFK.initials}}</div>
-        <div class="col-2">{{record.substrFK.name}}</div>
+        <div class="col-2">{{record.substrate}}</div>
         <div class="col-2">
             <div class="container">
-                <div class="row">{{record.assoc1FK.name}}</div>
-                <div class="row">{{record.assoc2FK.name}}</div>
-                <div class="row">{{record.assoc3FK.name}}</div>
+                <div class="row">{{record.assoc1}}</div>
+                <div class="row">{{record.assoc2}}</div>
+                <div class="row">{{record.assoc3}}</div>
             </div>
         </div>
         <div class="col-1" title="{{record.recorderFK.fullName}}">{{record.recorderFK.initials}}</div>
-        <div class="col-1 mt-1"><a href="/record/browse?page={{page.current}}&{{param}}&expand={{record.id}}" class="button-class"><button type="button" class="btn btn-primary">more</button></a></div>
+        <div class="col-1 mt-1">
+            <a href="/record/browse?page={{page.current}}&{{param}}&expand={{record.id}}" class="button-class"><button type="button" class="btn btn-primary">more</button></a>
+        </div>
     </div>
     {% endif %}
 {% endfor %}

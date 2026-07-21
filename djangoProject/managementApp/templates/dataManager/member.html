@@ -5,14 +5,14 @@
 {% block content %}
 <div class="container">
 <div class="row">
-    <h2 class="col-auto me-auto">Site details</h2>
+    <h2 class="col-auto me-auto">Member details</h2>
     <div class="col-auto">
         <a href="/" class="button-class"><button type="button" class="btn btn-dark">Back</button></a>
     </div>
 </div>
 </div>
 {% if new %}
-    <a href="/site?page={{page.current}}" class="button-class"><button type="button" class="btn btn-danger">Cancel</button></a>
+    <a href="/member?page={{page.current}}" class="button-class"><button type="button" class="btn btn-danger">Cancel</button></a>
     <div class="container">
             <form method="POST" enctype="multipart/form-data">
                 {% csrf_token %}
@@ -20,7 +20,7 @@
             </form>
     </div>
 {% else %}
-    <a href="/site?new=true&page={{page.current}}" class="button-class"><button type="button" class="btn btn-primary">Add new</button></a>
+    <a href="/member?new=true&page={{page.current}}" class="button-class"><button type="button" class="btn btn-primary">Add new</button></a>
 {% endif %}
 <br/><br/>
 <div class="container">
@@ -38,24 +38,18 @@
 <br/><br/>
 <div class="container">
 <div class="row border-bottom border-dark">
-    <div class="col-2"><b>Unique name</b></div>
-    <div class="col-1"><b>gridRef</b></div>
-    <div class="col-1"><b>VC</b></div>
-    <div class="col-2"><b>Site type</b></div>
-    <div class="col-3"><b>Remarks</b></div>
-    <div class="col-1"><b>Total Recs.</b></div>
+    <div class="col-2"><b>First name</b></div>
+    <div class="col-2"><b>Surename</b></div>
+    <div class="col-1"><b>Initials</b></div>
     <div class="col-1 mt-1"></div>
 </div>
-{% for site in sites %}
+{% for member in members %}
     <div class="row border-bottom border-dark">
-        <div class="col-2"><b>{{site.name}}</b></div>
-        <div class="col-1">{{site.gridRef}}</div>
-        <div class="col-1">{{site.VC}}</div>
-        <div class="col-2">{{site.type}}</div>
-        <div class="col-3">{{site.remarks|truncatechars:64}}</div>
-        <div class="col-1">{{site.total}}</div>
+        <div class="col-2">{{member.firstname}}</div>
+        <div class="col-2">{{member.surname}}</div>
+        <div class="col-1">{{member.initials}}</div>
         <div class="col-1 mt-1">
-            <a href="/site/{{site.id}}?page={{page.current}}&{{param}}" class="button-class"><button type="button" class="btn btn-primary">edit</button></a>
+            <a href="/member/{{member.id}}?page={{page.current}}&{{param}}" class="button-class"><button type="button" class="btn btn-primary">edit</button></a>
         </div>
     </div>
 {% endfor %}
@@ -69,16 +63,16 @@
         </li>
     {% else %}
         <li class="page-item">
-            <a class="page-link" href="/site?{{param}}&page=1">First</a>
+            <a class="page-link" href="/member?{{param}}&page=1">First</a>
         </li>
     {% endif %}
     {% for x in page.list %}
         {% if x == page.current %}
             <li class="page-item active" aria-current="page">
-                <a class="page-link" href="/site?{{param}}&page={{x}}">{{x}}</a>
+                <a class="page-link" href="/member?{{param}}&page={{x}}">{{x}}</a>
             </li>
         {% else %}
-            <li class="page-item"><a class="page-link" href="/site?{{param}}&page={{x}}">{{x}}</a></li>
+            <li class="page-item"><a class="page-link" href="/member?{{param}}&page={{x}}">{{x}}</a></li>
         {% endif %}
     {% endfor %}
     {% if page.last %}
@@ -87,7 +81,7 @@
         </li>
     {% else %}
         <li class="page-item">
-            <a class="page-link" href="/site?{{param}}&page={{page.pageCount}}">Last</a>
+            <a class="page-link" href="/member?{{param}}&page={{page.pageCount}}">Last</a>
         </li>
     {% endif %}
     </ul>

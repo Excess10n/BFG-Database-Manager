@@ -3,22 +3,28 @@
 {% load crispy_forms_tags %}
 
 {% block content %}
+{% block messages %}{% endblock messages %}
 <div class="container">
 <div class="row">
     <h2 class="col-auto me-auto">Bulk Data Input</h2>
     {% if delete %}
         <div class="col-auto">
-            <a href="/record/edit?page={{page.current}}&delete=false&{{param}}" class="button-class"><button type="button" class="btn btn-danger">Delete entire record: ON</button></a>
+            <a href="/record/edit?page={{page.current}}&delete=false&{{param}}" class="button-class"><button type="button" class="btn btn-danger">Delete option: ON</button></a>
         </div>
     {% else %}
         <div class="col-auto">
-            <a href="/record/edit?page={{page.current}}&delete=true&{{param}}" class="button-class"><button type="button" class="btn btn-success">Delete entire record: OFF</button></a>
+            <a href="/record/edit?page={{page.current}}&delete=true&{{param}}" class="button-class"><button type="button" class="btn btn-success">Delete option: OFF</button></a>
         </div>
     {% endif %}
     <div class="col-auto">
         <a href="/" class="button-class"><button type="button" class="btn btn-dark">Back</button></a>
     </div>
 </div>
+{% if messages and not last %}
+    {% for message in messages %}
+        <div class="container alert {{message.tags}}">{{message}}</div>
+    {% endfor %}
+{% endif %}
 <div class="row">
     <div class="col-3">
         <form method="POST" enctype="multipart/form-data">
@@ -45,6 +51,11 @@
             press new again to confirm</div>
         {% endif %}
         <div class="col">
+            {% if last == 'new' and messages %}
+                {% for message in messages %}
+                    <div class="container alert {{message.tags}}">{{message}}</div>
+                {% endfor %}
+            {% endif %}
             <form method="POST" enctype="multipart/form-data">
                 {% csrf_token %}
                 {% crispy newForm %}
@@ -58,6 +69,11 @@
             press change again to confirm</div>
         {% endif %}
             <div class="col">
+                {% if last == x.id|stringformat:"s" and messages %}
+                    {% for message in messages %}
+                        <div class="container alert {{message.tags}}">{{message}}</div>
+                    {% endfor %}
+                {% endif %}
                 <form method="POST" enctype="multipart/form-data">
                     {% csrf_token %}
                     {% crispy x.form %}
@@ -67,7 +83,7 @@
                 <div class="col-1 mt-3">
                     <form action="/record/edit/{{x.id}}/delete/?page={{page.current}}&delete={{deleteText}}&{{param}}" method="post">
                         {% csrf_token %}
-                        <button type="submit" class="btn btn-danger">Delete</button>
+                        <button type="submit" class="btn btn-danger">Permanently delete record</button>
                     </form>
                 </div>
             {% endif %}
