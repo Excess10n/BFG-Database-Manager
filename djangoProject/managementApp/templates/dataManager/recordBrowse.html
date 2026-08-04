@@ -37,8 +37,8 @@
     {% endif %}
         <div class="col-2">
             <div>{{ record.fungusFK.currentFungus.fullName }}</div>
-            {% if record.fungusFK.currentFungus.commonName %}
-                <div class="text-muted">({{ record.fungusFK.currentFungus.commonName }})</div>
+            {% if record.fungusFK.currentFungus.englishName %}
+                <div class="text-muted">({{ record.fungusFK.currentFungus.englishName }})</div>
             {% endif %}
         </div>
         <div class="col-2">{{record.siteFK.name}}</div>
@@ -69,6 +69,14 @@
             <div class="row" title="{{record.confirmerFK.fullName}}">Confirmer: {{record.confirmerFK.initials}}</div>
             <div class="row" title="{{record.collectorFK.fullName}}">Collector: {{record.collectorFK.initials}}</div>
             <div class="row" title="{{record.photographerFK.fullName}}">Photographer: {{record.photographerFK.initials}}</div>
+            <br/>
+            {% if record.firstRecord == "S" %}
+            <div class="row text-danger"><b>First Site Record!</b></div>
+            {% elif record.firstRecord == "B" %}
+            <div class="row text-danger"><b>First Bucks Record!</b></div>
+            {% elif record.firstRecord == "D" %}
+            <div class="row text-danger"><b>First Database Record!</b></div>
+            {% endif %}
         </div>
         <div class="col-2">
             <div class="row">Lit Ref: {{record.litRef}}</div>
@@ -81,7 +89,9 @@
         <div class="col-1">Remarks:</div>
         <div class="col-4">{{record.remarks}}</div>
         <div class="col-1 mt-1">
+            {% if isManager %}
             <a href="/record/browse/{{record.id}}?page={{page.current}}&{{param}}&expand={{record.id}}" class="button-class"><button type="button" class="btn btn-primary">edit</button></a>
+            {% endif %}
         </div>
         
     </div>
@@ -93,8 +103,8 @@
     {% endif %}
         <div class="col-2">
             <div>{{ record.fungusFK.currentFungus.fullName }}</div>
-            {% if record.fungusFK.currentFungus.commonName %}
-                <div class="text-muted">({{ record.fungusFK.currentFungus.commonName }})</div>
+            {% if record.fungusFK.currentFungus.englishName %}
+                <div class="text-muted">({{ record.fungusFK.currentFungus.englishName }})</div>
             {% endif %}
         </div>
         <div class="col-2">{{record.siteFK.name}}</div>

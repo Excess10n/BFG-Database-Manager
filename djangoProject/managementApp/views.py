@@ -7,14 +7,18 @@ from .models import Association, Substrate, Site, Record, Fungi, Member
 from .viewFunctions import getFungiObjects
 import datetime
 
-# Create your views here.
+def checkPerms(user): # True if manager, False if member
+    if user.has_perm("managementApp.manager"):
+        return True
+    else:
+        return False
 
-def pagination(current, total):
+def pagination(current, total, max=50):
     if current == None:
         current = 1
     current = int(current)
 
-    pageCount = (total // 50) + 1
+    pageCount = (total // max) + 1
     start = current - 4
     end = current + 4
     if start < 1:
@@ -29,79 +33,113 @@ def pagination(current, total):
         end = pageCount
     pageList = range(start, end + 1)
 
-    if current*50 > total:
-        return current, pageCount, (current-1)*50, total, pageList
+    if current*max > total:
+        return current, pageCount, (current-1)*max, total, pageList
     
-    return current, pageCount, (current-1)*50, current*50, pageList
+    return current, pageCount, (current-1)*max, current*max, pageList
 
 def IndexView(request):
     # list of pages the homepage can direct to
-    context = {
-        "pages": [
-            {
-                "title": "Bulk data input",
-                "desc": "add and update records in bulk",
-                "link": "/record/edit"
-            },
-            {
-                "title": "Record browser",
-                "desc": "browse the records",
-                "link": "/record/browse"
-            },
-            {
-                "title": "Fungus list",
-                "desc": "browse BFG's dictionary of fungi",
-                "link": "/fungus"
-            },
-            {
-                "title": "Site details",
-                "desc": "view, add, or change any site details",
-                "link": "/site"
-            },
-            {
-                "title": "Member details",
-                "desc": "view, add, or change any member details",
-                "link": "/member"
-            },
-            {
-                "title": "Substrate list",
-                "desc": "view, add, or change any substrate details",
-                "link": "/substrate"
-            },
-            {
-                "title": "Associated organisms list",
-                "desc": "view, add, or change any association details",
-                "link": "/association"
-            },
-            {
-                "title": "Record export",
-                "desc": "Export for the website or FRDBI",
-                "link": "/export"
-            }
-        ]
-    }
+    
+    isManager = checkPerms(request.user)
+    if isManager:
+        context = {
+            "pages": [
+                {
+                    "title": "Bulk data input",
+                    "desc": "add and update records in bulk",
+                    "link": "/record/edit"
+                },
+                {
+                    "title": "Record browser",
+                    "desc": "browse the records",
+                    "link": "/record/browse"
+                },
+                {
+                    "title": "Fungus list",
+                    "desc": "browse BFG's dictionary of fungi",
+                    "link": "/fungus"
+                },
+                {
+                    "title": "Site details",
+                    "desc": "view, add, or change any site details",
+                    "link": "/site"
+                },
+                {
+                    "title": "Member details",
+                    "desc": "view, add, or change any member details",
+                    "link": "/member"
+                },
+                {
+                    "title": "Substrate list",
+                    "desc": "view, add, or change any substrate details",
+                    "link": "/substrate"
+                },
+                {
+                    "title": "Associated organisms list",
+                    "desc": "view, add, or change any association details",
+                    "link": "/association"
+                },
+                {
+                    "title": "Record export",
+                    "desc": "Export for the website or FRDBI",
+                    "link": "/export"
+                }
+            ],
+            "isManager": isManager
+        }
+    else:
+        context = {
+            "pages": [
+                {
+                    "title": "Record browser",
+                    "desc": "browse the records",
+                    "link": "/record/browse"
+                }
+            ],
+            "isManager": isManager
+        }
     return render(request, 'index.html', context)
 
 def manageForm(form, new, edit, request): # function for saving record forms
     data = form.cleaned_data
     inst = form.save(commit=False)
 
+    def get_member(full_name, label):
+        if not full_name:
+            return None
+        try:
+            return Member.objects.get(fullName=full_name)
+        except Member.DoesNotExist:
+            messages.add_message(request, messages.ERROR, f"Name \"{label}\" not found")
+            return None
+
+    def get_site(name):
+        try:
+            return Site.objects.get(name=name)
+        except Site.DoesNotExist:
+            messages.add_message(request, messages.ERROR, f"Site \"{name}\" not found")
+            return None
+
     # get values from params
     if not edit:
-        if request.GET.get("site") != None:
-            inst.siteFK = Site.objects.get(id=request.GET.get("site"))
+        site_id = request.GET.get("site")
+        if site_id is not None:
+            inst.siteFK = Site.objects.get(id=site_id)
         else:
             messages.add_message(request, messages.ERROR, "Record Site hasn't been entered")
             return False
-        
-        if request.GET.get("rec") != None:
-            inst.recorderFK = Member.objects.get(id=request.GET.get("rec"))
+
+        recorder_id = request.GET.get("rec")
+        if recorder_id is not None:
+            inst.recorderFK = Member.objects.get(id=recorder_id)
         else:
             messages.add_message(request, messages.ERROR, "Recorder hasn't been entered")
             return False
 
-        if request.GET.get("date") != None:
-            inst.dateFound = datetime.datetime.strptime(request.GET.get("date"), "%Y-%m-%d").date()
+        date_value = request.GET.get("date")
+        if date_value is not None:
+            inst.dateFound = datetime.datetime.strptime(date_value, "%Y-%m-%d").date()
         else:
             messages.add_message(request, messages.ERROR, "Record Date hasn't been entered")
             return False
@@ -110,35 +148,27 @@ def manageForm(form, new, edit, request): # function for saving record forms
         if new:
             nameCode = inst.recorderFK.initials
             userCodes = Record.objects.filter(uniqueCode__startswith=f"R{nameCode}").order_by('-uniqueCode')
-            if userCodes.count() == 0:
-                inst.uniqueCode = f"R{nameCode}0000000"
-            else:
+            if userCodes.exists():
                 lastCode = userCodes.first().uniqueCode
-                num = lastCode[-7:]
-                num = int(num) + 1
-                num = str(num)
-                add = 7 - len(num)
-                for i in range(add):
-                    num = "0" + num
-                inst.uniqueCode = lastCode[:-7] + num
+                num = int(lastCode[-7:]) + 1
+                inst.uniqueCode = f"{lastCode[:-7]}{num:07d}"
+            else:
+                inst.uniqueCode = f"R{nameCode}0000000"
     else:
-        try:
-            inst.site = Site.objects.get(name=data["site"])
-        except:
-            messages.add_message(request, messages.ERROR, f"Site \"{data['site']}\" not found")
+        site = get_site(data["site"])
+        if site is None:
             return False
-        try:
-            inst.recorderFK = Member.objects.get(fullName=data["recorderFK"])
-        except:
-            messages.add_message(request, messages.ERROR, f"Name \"{data['recorderFK']}\" not found")
+        inst.siteFK = site
+
+        recorder = get_member(data["recorderFK"], data["recorderFK"])
+        if recorder is None:
             return False
-        if data['DNAseq'] != "" or data['DNAseq'] != None:
-            if data['DNATest'] != "Yes":
-                inst.DNAseq = ""
-                messages.add_message(request, messages.ERROR, "DNA Sequence not submitted because the DNA Test? option has not been set to yes")
+        inst.recorderFK = recorder
 
+        if data['DNAseq'] not in ("", None) and data['DNATest'] != "Yes":
+            inst.DNAseq = ""
+            messages.add_message(request, messages.ERROR, "DNA Sequence not submitted because the DNA Test? option has not been set to yes")
 
-    
     # Fungus needs to be the fungi object not text
     try:
         current, _, _ = getFungiObjects(data["fungus"])
@@ -146,35 +176,35 @@ def manageForm(form, new, edit, request): # function for saving record forms
     except:
         messages.add_message(request, messages.ERROR, f"Fungus \"{data['fungus']}\" not found")
         return False
-    
-    try:
-        inst.identifierFK = Member.objects.get(fullName=data["identifierFK"])
-    except:
-        messages.add_message(request, messages.ERROR, f"Name \"{data['identifierFK']}\" not found")
+
+    identifier = get_member(data["identifierFK"], data["identifierFK"])
+    if identifier is None:
         return False
-    try:
-        if data["confirmerFK"] != "":
-            inst.confirmerFK = Member.objects.get(fullName=data["confirmerFK"])
-    except:
-        messages.add_message(request, messages.ERROR, f"Name \"{data['confirmerFK']}\" not found")
+    inst.identifierFK = identifier
+
+    confirmer = None
+    if data["confirmerFK"]:
+        confirmer = get_member(data["confirmerFK"], data["confirmerFK"])
+        if confirmer is None:
+            return False
+    inst.confirmerFK = confirmer
+
+    collector = get_member(data["collectorFK"], data["collectorFK"])
+    if collector is None:
         return False
-    try:
-        inst.collectorFK = Member.objects.get(fullName=data["collectorFK"])
-    except:
-        messages.add_message(request, messages.ERROR, f"Name \"{data['collectorFK']}\" not found")
-        return False
-    try:
-        if data["photographerFK"] != "":
-            inst.photographerFK = Member.objects.get(fullName=data["photographerFK"])
-    except:
-        messages.add_message(request, messages.ERROR, f"Name \"{data['photographerFK']}\" not found")
-        return False
-    
+    inst.collectorFK = collector
+
+    photographer = None
+    if data["photographerFK"]:
+        photographer = get_member(data["photographerFK"], data["photographerFK"])
+        if photographer is None:
+            return False
+    inst.photographerFK = photographer
+
     if data["substrate"] == "":
         messages.add_message(request, messages.ERROR, f"Substrate is empty")
         return False
-    else:
-        inst.substrate = data["substrate"]
+    inst.substrate = data["substrate"]
     if data["assoc1"] != "":
         inst.assoc1 = data["assoc1"]
     if data["assoc2"] != "":
@@ -183,22 +213,35 @@ def manageForm(form, new, edit, request): # function for saving record forms
         inst.assoc3 = data["assoc3"]
 
     # check if this record is the first in the site, bucks, or database
-    if new:
-        if Record.objects.filter(fungusFK=inst.fungusFK).count() == 0:
-            inst.firstRecord = 'D'
-        elif Record.objects.filter(fungusFK=inst.fungusFK, siteFK__in=Site.objects.filter(VC=24)).count() == 0:
-            inst.firstRecord = 'B'
-        elif Record.objects.filter(fungusFK=inst.fungusFK, siteFK=inst.siteFK).count() == 0:
-            inst.firstRecord = 'S'
-    
+    site_history = list(
+        Record.objects.filter(fungusFK=inst.fungusFK)
+        .values_list("siteFK_id", "siteFK__VC")
+    )
+    if not site_history:
+        inst.firstRecord = 'D'
+    elif not any(vic == 24 for _, vic in site_history):
+        inst.firstRecord = 'B'
+    elif not any(site_id == inst.siteFK_id for site_id, _ in site_history):
+        inst.firstRecord = 'S'
+
     inst.updaterFK = request.user.user_profile
     inst.dateUpdated = datetime.datetime.now()
 
     inst.save()
     return True
 
+def _get_submitted_record_form_prefix(post_data):
+    for key in post_data.keys():
+        if key.startswith("form") and "-" in key:
+            return key.split("-", 1)[0]
+    return None
+
+
 def RecordEditView(request):
     if not request.user.is_authenticated:
+        raise PermissionDenied()
+
+    if not checkPerms(request.user):
         raise PermissionDenied()
     
     # check if delete mode is on
@@ -257,7 +300,7 @@ def RecordEditView(request):
         records = Record.objects.all().order_by('-id').filter(dateFound=data["date"], siteFK=Site.objects.get(id=data["site"]), recorderFK=Member.objects.get(id=data["rec"]))
 
     currentPage = request.GET.get("page")
-    currentPage, pageCount, start, end, pageList = pagination(currentPage, records.count())
+    currentPage, pageCount, start, end, pageList = pagination(currentPage, records.count(), 20)
     records = records[start:end]
 
     page = {"current": currentPage, "first": currentPage == 1, "last": currentPage == pageCount, "pageCount": pageCount, "list": pageList}
@@ -275,11 +318,56 @@ def RecordEditView(request):
     
     param += f"&order={order}"
 
+    submitted_prefix = None
+    if request.method == "POST":
+        submitted_prefix = _get_submitted_record_form_prefix(request.POST)
+
+    if request.method == "POST" and submitted_prefix:
+        if submitted_prefix == "form0":
+            newForm = RecordForm("New", request.POST or None, request.FILES or None, prefix="form0")
+            if newForm.is_valid():
+                done = manageForm(newForm, True, False, request)
+                if done:
+                    messages.add_message(request, messages.INFO, "Added new record")
+                return redirect(f"/record/edit?page={page['current']}&delete={deleteText}&{param}&last=new")
+        else:
+            try:
+                record_index = int(submitted_prefix.replace("form", "")) - 1
+            except ValueError:
+                record_index = None
+
+            if record_index is not None and 0 <= record_index < len(records):
+                record = records[record_index]
+                init = {
+                    "fungus": record.fungusFK.currentFungus.fullName,
+                    "collectorFK": record.collectorFK.fullName,
+                    "identifierFK": record.identifierFK.fullName,
+                    "substrate": record.substrate
+                }
+                if record.confirmerFK != None:
+                    init["confirmerFK"] = record.confirmerFK.fullName
+                if record.photographerFK != None:
+                    init["photographerFK"] = record.photographerFK.fullName
+                if record.assoc1 != None:
+                    init["assoc1"] = record.assoc1
+                if record.assoc2 != None:
+                    init["assoc2"] = record.assoc2
+                if record.assoc3 != None:
+                    init["assoc3"] = record.assoc3
+
+                form = RecordForm("Change", request.POST or None, request.FILES or None, instance=record, initial=init, prefix=submitted_prefix)
+                if form.is_valid():
+                    done = manageForm(form, False, False, request)
+                    if done:
+                        messages.add_message(request, messages.INFO, "Edited record")
+                    return redirect(f"/record/edit?page={page['current']}&delete={deleteText}&{param}&last={record.id}")
+
     # form list
     formList = []
     index = 0
     for record in records:
         index += 1
+        prefix = f"form{index}"
         init = {
             "fungus": record.fungusFK.currentFungus.fullName,
             "collectorFK": record.collectorFK.fullName,
@@ -297,13 +385,8 @@ def RecordEditView(request):
         if record.assoc3 != None:
             init["assoc3"] = record.assoc3
 
-        form = RecordForm("Change", request.POST or None, request.FILES or None, instance=record, initial=init, prefix=f"form{index}")
-        if form.is_valid():
-            done = manageForm(form, False, False, request)
-            if done:
-                messages.add_message(request, messages.SUCCESS, "Edited record")
-            return redirect(f"/record/edit?page={page['current']}&delete={deleteText}&{param}&last={record.id}")
-        
+        form = RecordForm("Change", request.POST or None, request.FILES or None, instance=record, initial=init, prefix=prefix)
+
         dic = {"form": form, "id": record.id, "name": record.fungusFK.currentFungus.fullName, "date": record.dateFound}
         if order == "2":
             for i in range(len(formList)):
@@ -317,11 +400,6 @@ def RecordEditView(request):
 
     # new form
     newForm = RecordForm("New", request.POST or None, request.FILES or None, prefix="form0")
-    if newForm.is_valid():
-        done = manageForm(newForm, True, False, request)
-        if done:
-            messages.add_message(request, messages.SUCCESS, "Added new record")
-        return redirect(f"/record/edit?page={page['current']}&delete={deleteText}&{param}&last=new")
 
     context = {"formList": formList, "newForm": newForm, "initForm": initForm, "orderForm": orderForm, "page": page, "param": param, "delete": delete, "deleteText": deleteText, "initPresent": initPresent, "last": request.GET.get('last')}
     return render(request, 'dataManager/recordEdit.html', context)
@@ -329,13 +407,16 @@ def RecordEditView(request):
 def RecordDelete(request, id):
     if not request.user.is_authenticated:
         raise PermissionDenied()
+
+    if not checkPerms(request.user):
+        raise PermissionDenied()
     
     record = get_object_or_404(Record, id=id)
     
     if request.method == "POST":
         try:
             record.delete()
-            messages.add_message(request, messages.SUCCESS, "Record deleted")
+            messages.add_message(request, messages.INFO, "Record deleted")
         except:
             messages.add_message(request, messages.ERROR, "Record failed to delete")
 
@@ -355,6 +436,8 @@ def RecordDelete(request, id):
 def RecordBrowseView(request):
     if not request.user.is_authenticated:
         raise PermissionDenied()
+
+    isManager = checkPerms(request.user)
     
     # get data from query params if any
     param = ""
@@ -507,54 +590,80 @@ def RecordBrowseView(request):
                 | Q(assoc2__icontains=association)
                 | Q(assoc3__icontains=association)
             )
+        if fungus != None:
+            records = records.filter(fungusFK=fungus)
+        if site != None:
+            records = records.filter(siteFK=site)
+        if vc != None:
+            records = records.filter(siteFK__VC=vc)
+        if recorder != None:
+            records = records.filter(recorderFK=recorder)
+        if collector != None:
+            records = records.filter(collectorFK=collector)
+        if identifier != None:
+            records = records.filter(identifierFK=identifier)
+        if confirmer != None:
+            records = records.filter(confirmerFK=confirmer)
 
-        records2 = []
-        for record in records:
-            # repeatative code time
-            # ---------------------
-            if fungus != None:
-                if record.fungusFK != fungus:
-                    continue
-            if site != None:
-                if record.siteFK != site:
-                    continue
-            if vc != None:
-                if record.siteFK.VC != vc:
-                    continue
-            if recorder != None:
-                if record.recorderFK != recorder:
-                    continue
-            if collector != None:
-                if record.collectorFK != collector:
-                    continue
-            if identifier != None:
-                if record.identifierFK != identifier:
-                    continue
-            if confirmer != None:
-                if record.confirmerFK != confirmer:
-                    continue
+        if dateSingle != None:
+            records = records.filter(dateFound=dateSingle)
+        elif dateFrom != None and dateTo != None:
+            records = records.filter(dateFound__range=[dateFrom, dateTo])
+        elif dateFrom != None:
+            records = records.filter(dateFound__gte=dateFrom)
+        elif dateTo != None:
+            records = records.filter(dateTo__lte=dateTo)
+
+        if month != None:
+            records = records.filter(dateFound__month=month)
+
+        # records2 = []
+        # for record in records:
+        #     # repeatative code time
+        #     # ---------------------
+        #     if fungus != None:
+        #         if record.fungusFK != fungus:
+        #             continue
+        #     if site != None:
+        #         if record.siteFK != site:
+        #             continue
+        #     if vc != None:
+        #         if record.siteFK.VC != vc:
+        #             continue
+        #     if recorder != None:
+        #         if record.recorderFK != recorder:
+        #             continue
+        #     if collector != None:
+        #         if record.collectorFK != collector:
+        #             continue
+        #     if identifier != None:
+        #         if record.identifierFK != identifier:
+        #             continue
+        #     if confirmer != None:
+        #         if record.confirmerFK != confirmer:
+        #             continue
             
-            # ---------------------
-            if dateSingle != None:
-                if not (dateSingle == record.dateFound):
-                    continue
-            elif dateFrom != None and dateTo != None:
-                if not (dateFrom <= record.dateFound and dateTo >= record.dateFound):
-                    continue
-            elif dateFrom != None:
-                if not (dateFrom <= record.dateFound):
-                    continue
-            elif dateTo != None:
-                if not (dateTo >= record.dateFound):
-                    continue
+        #     # ---------------------
+        #     if dateSingle != None:
+        #         if not (dateSingle == record.dateFound):
+        #             continue
+        #     elif dateFrom != None and dateTo != None:
+        #         if not (dateFrom <= record.dateFound and dateTo >= record.dateFound):
+        #             continue
+        #     elif dateFrom != None:
+        #         if not (dateFrom <= record.dateFound):
+        #             continue
+        #     elif dateTo != None:
+        #         if not (dateTo >= record.dateFound):
+        #             continue
             
-            if month != None:
-                if record.dateFound.month != month:
-                    continue
+        #     if month != None:
+        #         if record.dateFound.month != month:
+        #             continue
             
             
-            records2.append(record)
-        records = records2
+        #     records2.append(record)
+        # records = records2
         length = len(records)
     
     else:
@@ -578,11 +687,14 @@ def RecordBrowseView(request):
     except:
         expand = -1
 
-    context = {"records": records, "param": param, "form": form, "page": page, "expand": expand}
+    context = {"records": records, "param": param, "form": form, "page": page, "expand": expand, "isManager": isManager}
     return render(request, 'dataManager/recordBrowse.html', context)
 
 def RecordEditSingle(request, id):
     if not request.user.is_authenticated:
+        raise PermissionDenied()
+
+    if not checkPerms(request.user):
         raise PermissionDenied()
     
     record = get_object_or_404(Record, id=id)
@@ -621,7 +733,7 @@ def RecordEditSingle(request, id):
     if form.is_valid():
         done = manageForm(form, False, True, request)
         if done:
-            messages.add_message(request, messages.SUCCESS, "Edited record")
+            messages.add_message(request, messages.INFO, "Edited record")
         return redirect(f"/record/browse/{id}?{param}")
     
     context = {"record": record, "form": form, "param": param, "deleteOption": deleteOption}
@@ -629,6 +741,9 @@ def RecordEditSingle(request, id):
 
 def RecordDelete2(request, id):
     if not request.user.is_authenticated:
+        raise PermissionDenied()
+
+    if not checkPerms(request.user):
         raise PermissionDenied()
     
     record = get_object_or_404(Record, id=id)
@@ -644,7 +759,7 @@ def RecordDelete2(request, id):
     if request.method == "POST":
         try:
             record.delete()
-            messages.add_message(request, messages.SUCCESS, "Record deleted")
+            messages.add_message(request, messages.INFO, "Record deleted")
         except:
             messages.add_message(request, messages.ERROR, "Record failed to delete")
             return redirect(f"/record/browse/{id}?{param}")
@@ -661,6 +776,9 @@ def FungusView(request):
 
 def SiteView(request):
     if not request.user.is_authenticated:
+        raise PermissionDenied()
+
+    if not checkPerms(request.user):
         raise PermissionDenied()
     
     param = ""
@@ -691,11 +809,11 @@ def SiteView(request):
         inst.updaterFK = request.user.user_profile
         inst.dateUpdated = datetime.datetime.now()
         inst.save()
-        messages.add_message(request, messages.SUCCESS, "Added new site")
+        messages.add_message(request, messages.INFO, "Added new site")
         return redirect('/site?' + param)
     
     if site != None:
-        sites = Site.objects.all().filter(reportingName__icontains=site).order_by('name')
+        sites = Site.objects.all().filter(name__icontains=site).order_by('name')
     else:
         sites = Site.objects.all().order_by('name')
 
@@ -715,6 +833,9 @@ def SiteView(request):
 
 def SiteEditSingle(request, id):
     if not request.user.is_authenticated:
+        raise PermissionDenied()
+
+    if not checkPerms(request.user):
         raise PermissionDenied()
     
     site = get_object_or_404(Site, id=id)
@@ -736,7 +857,7 @@ def SiteEditSingle(request, id):
         inst.updaterFK = request.user.user_profile
         inst.dateUpdated = datetime.datetime.now()
         inst.save()
-        messages.add_message(request, messages.SUCCESS, "Edited site")
+        messages.add_message(request, messages.INFO, "Edited site")
         return redirect(f"/site/{id}?{param}")
     
     context = {"site": site, "form": form, "param": param, "deleteOption": deleteOption}
@@ -744,6 +865,9 @@ def SiteEditSingle(request, id):
 
 def SiteDelete(request, id):
     if not request.user.is_authenticated:
+        raise PermissionDenied()
+
+    if not checkPerms(request.user):
         raise PermissionDenied()
     
     site = get_object_or_404(Site, id=id)
@@ -759,7 +883,7 @@ def SiteDelete(request, id):
     if request.method == "POST":
         try:
             site.delete()
-            messages.add_message(request, messages.SUCCESS, "Site deleted")
+            messages.add_message(request, messages.INFO, "Site deleted")
         except RestrictedError: # if the site is being used by a record the delete will be blocked
             messages.add_message(request, messages.ERROR, "Delete failed: Site is used in 1 or more records")
             return redirect(f"/site/{id}?{param}")
@@ -774,6 +898,9 @@ def SiteDelete(request, id):
 # ------------
 def MemberView(request):
     if not request.user.is_authenticated:
+        raise PermissionDenied()
+
+    if not checkPerms(request.user):
         raise PermissionDenied()
     
     param = ""
@@ -800,15 +927,43 @@ def MemberView(request):
     form = MemberForm("Add", request.POST or None, prefix="newForm")
     if form.is_valid():
         inst = form.save(commit=False)
+        if inst.initials.isalpha():
+            numbers = []
+            for m in Member.objects.filter(initials__icontains=inst.initials).order_by('initials'):
+                num = ""
+                index = -1
+                while num.isnumeric() or num == "":
+                    num = m.initials[index] + num
+                    index -= 1
+                    #print(num)
+                num = num[1:]
+                if num == "":
+                    num = "1"
+                numbers.append(int(num))
+
+            index = 1
+            while True:
+                if index in numbers:
+                    index += 1
+                else:
+                    break
+
+            if index != 1:
+                inst.initials = inst.initials + str(index)
+
+        else:
+            messages.add_message(request, messages.ERROR, "New member not added: Initials must not have a number (as this is automatically assigned)")
+            return redirect('/member?' + param)
+        
         inst.dateUpdated = datetime.datetime.now()
         inst.save()
-        messages.add_message(request, messages.SUCCESS, "Added new member")
+        messages.add_message(request, messages.INFO, "Added new member")
         return redirect('/member?' + param)
     
     if member != None:
-        members = Member.objects.all().filter(fullName__icontains=member).order_by('firstname')
+        members = Member.objects.all().filter(fullName__icontains=member).order_by('fullName')
     else:
-        members = Member.objects.all().order_by('firstname')
+        members = Member.objects.all().order_by('fullName')
 
     # pagination
     currentPage = request.GET.get("page")
@@ -817,12 +972,22 @@ def MemberView(request):
 
     page = {"current": currentPage, "first": currentPage == 1, "last": currentPage == pageCount, "pageCount": pageCount, "list": pageList}
 
+    for member in members:
+        member.total = Record.objects.filter(
+            Q(recorderFK=member)
+            | Q(identifierFK=member)
+            | Q(confirmerFK=member)
+            | Q(collectorFK=member)
+        ).count()
 
     context = {"newForm": form, "searchForm": searchForm, "new": new, "members": members, "param": param, "page": page}
     return render(request, 'dataManager/member.html', context)
 
 def MemberEditSingle(request, id):
     if not request.user.is_authenticated:
+        raise PermissionDenied()
+
+    if not checkPerms(request.user):
         raise PermissionDenied()
     
     member = get_object_or_404(Member, id=id)
@@ -843,7 +1008,7 @@ def MemberEditSingle(request, id):
         inst = form.save(commit=False)
         inst.dateUpdated = datetime.datetime.now()
         inst.save()
-        messages.add_message(request, messages.SUCCESS, "Edited member")
+        messages.add_message(request, messages.INFO, "Edited member")
         return redirect(f"/member/{id}?{param}")
     
     context = {"member": member, "form": form, "param": param, "deleteOption": deleteOption}
@@ -851,6 +1016,9 @@ def MemberEditSingle(request, id):
 
 def MemberDelete(request, id):
     if not request.user.is_authenticated:
+        raise PermissionDenied()
+
+    if not checkPerms(request.user):
         raise PermissionDenied()
     
     member = get_object_or_404(Member, id=id)
@@ -862,15 +1030,49 @@ def MemberDelete(request, id):
             param += f"{key}={value}&"
     if param:
         param = param[:-1]
+
+    if member.surname == "anon":
+            messages.add_message(request, messages.ERROR, "anon can't be deleted")
+            return redirect(f"/member/{id}?{param}")
     
     if request.method == "POST":
-        member.firstname = "DELETED"
-        member.surname = "DELETED"
-        member.initials = "DEL."
-        member.isDeleted = True
-        member.dateUpdated = datetime.datetime.now()
-        member.save()
-        messages.add_message(request, messages.SUCCESS, "Member deleted")
+        replacement_member = Member.objects.get(surname="anon")
+
+        for site in Site.objects.filter(creatorFK=member):
+            site.creatorFK = replacement_member
+            site.save(update_fields=["creatorFK"])
+        for site in Site.objects.filter(updaterFK=member):
+            site.updaterFK = replacement_member
+            site.save(update_fields=["updaterFK"])
+
+        for fungi in Fungi.objects.filter(creatorFK=member):
+            fungi.creatorFK = replacement_member
+            fungi.save(update_fields=["creatorFK"])
+        for fungi in Fungi.objects.filter(updaterFK=member):
+            fungi.updaterFK = replacement_member
+            fungi.save(update_fields=["updaterFK"])
+
+        for record in Record.objects.filter(recorderFK=member):
+            record.recorderFK = replacement_member
+            record.save(update_fields=["recorderFK"])
+        for record in Record.objects.filter(identifierFK=member):
+            record.identifierFK = replacement_member
+            record.save(update_fields=["identifierFK"])
+        for record in Record.objects.filter(confirmerFK=member):
+            record.confirmerFK = replacement_member
+            record.save(update_fields=["confirmerFK"])
+        for record in Record.objects.filter(collectorFK=member):
+            record.collectorFK = replacement_member
+            record.save(update_fields=["collectorFK"])
+        for record in Record.objects.filter(updaterFK=member):
+            record.updaterFK = replacement_member
+            record.save(update_fields=["updaterFK"])
+        for record in Record.objects.filter(photographerFK=member):
+            record.photographerFK = replacement_member
+            record.save(update_fields=["photographerFK"])
+
+        member.delete()
+        messages.add_message(request, messages.INFO, "Member deleted")
     
     return redirect('/member?' + param)
 
@@ -880,6 +1082,9 @@ def MemberDelete(request, id):
 
 def SubstrView(request):
     if not request.user.is_authenticated:
+        raise PermissionDenied()
+
+    if not checkPerms(request.user):
         raise PermissionDenied()
     
     # check if delete mode is on
@@ -898,7 +1103,7 @@ def SubstrView(request):
         form = SubtrForm("Change", request.POST or None, instance=subtr, prefix=f"form{index}")
         if form.is_valid():
             form.save()
-            messages.add_message(request, messages.SUCCESS, "Edited substrate")
+            messages.add_message(request, messages.INFO, "Edited substrate")
             return redirect("/substrate?delete=" + deleteText)
         formList.append({"form": form, "id": subtr.id})
 
@@ -906,7 +1111,7 @@ def SubstrView(request):
     newForm = SubtrForm("New", request.POST or None, prefix="form0")
     if newForm.is_valid():
         newForm.save()
-        messages.add_message(request, messages.SUCCESS, "Added new substrate")
+        messages.add_message(request, messages.INFO, "Added new substrate")
         return redirect("/substrate?delete=" + deleteText)
 
     context = {"formList": formList, "newForm": newForm, "delete": delete, "deleteText": deleteText}
@@ -915,13 +1120,16 @@ def SubstrView(request):
 def SubstrDelete(request, id):
     if not request.user.is_authenticated:
         raise PermissionDenied()
+
+    if not checkPerms(request.user):
+        raise PermissionDenied()
     
     substr = get_object_or_404(Substrate, id=id)
     
     if request.method == "POST":
         try:
             substr.delete()
-            messages.add_message(request, messages.SUCCESS, "Substrate deleted")
+            messages.add_message(request, messages.INFO, "Substrate deleted")
         except RestrictedError: # if the substrate is being used by a record the delete will be blocked
             messages.add_message(request, messages.ERROR, "Delete failed: Substrate is used in 1 or more records")
         except:
@@ -935,6 +1143,9 @@ def SubstrDelete(request, id):
 
 def AssocView(request):
     if not request.user.is_authenticated:
+        raise PermissionDenied()
+
+    if not checkPerms(request.user):
         raise PermissionDenied()
     
     # check if delete mode is on
@@ -953,7 +1164,7 @@ def AssocView(request):
         form = AssocForm("Change", request.POST or None, instance=assoc, prefix=f"form{index}")
         if form.is_valid():
             form.save()
-            messages.add_message(request, messages.SUCCESS, "Edited association")
+            messages.add_message(request, messages.INFO, "Edited association")
             return redirect("/association?delete=" + deleteText)
         formList.append({"form": form, "id": assoc.id})
 
@@ -961,7 +1172,7 @@ def AssocView(request):
     newForm = AssocForm("New", request.POST or None, prefix="form0")
     if newForm.is_valid():
         newForm.save()
-        messages.add_message(request, messages.SUCCESS, "Added new association")
+        messages.add_message(request, messages.INFO, "Added new association")
         return redirect("/association?delete=" + deleteText)
 
     context = {"formList": formList, "newForm": newForm, "delete": delete, "deleteText": deleteText}
@@ -970,13 +1181,16 @@ def AssocView(request):
 def AssocDelete(request, id):
     if not request.user.is_authenticated:
         raise PermissionDenied()
+
+    if not checkPerms(request.user):
+        raise PermissionDenied()
     
     assoc = get_object_or_404(Association, id=id)
     
     if request.method == "POST":
         try:
             assoc.delete()
-            messages.add_message(request, messages.SUCCESS, "Association deleted")
+            messages.add_message(request, messages.INFO, "Association deleted")
         except RestrictedError: # if the assoc is being used by a record the delete will be blocked
             messages.add_message(request, messages.ERROR, "Delete failed: Association is used in 1 or more records")
         except:
@@ -991,3 +1205,41 @@ def AssocDelete(request, id):
 def ExportView(request):
     context = {}
     return render(request, 'export/export.html', context)
+
+    # example stuff from AI:
+    records = Record.objects.select_related("fungusFK", "siteFK").all()
+
+    rtf = (
+        "{\\rtf1\\ansi\\deff0\n"
+        "{\\fonttbl{\\f0\\froman Times New Roman;}{\\f1\\fswiss Arial;}}\n"
+        "{\\colortbl ;\\red0\\green0\\blue0;}\n"
+        "\\viewkind4\\uc1\\pard\\sa200\\sl276\\slmult1\n"
+        "{\\b\\fs28 BFG Records Export}\\par\n"
+        "\\pard\\sa120\\fs20\n"
+    )
+
+    # Header row
+    rtf += (
+        "{\\b Code}\\tab"
+        "{\\b Species}\\tab"
+        "{\\b Site}\\par\n"
+    )
+
+    for i, record in enumerate(records, start=1):
+        # Insert a page break after every 20 rows
+        if i % 20 == 0:
+            rtf += "\\page\n"
+
+        # Use bold/italic styling for the first field (problems here because of the {})
+        row = (
+            f"{{\\b {record.uniqueCode}}}\\tab"
+            f"{{\\i {record.fungusFK}}}\\tab"
+            f"{record.siteFK}\\par\n"
+        )
+        rtf += row
+
+    rtf += "}"
+
+    response = HttpResponse(rtf, content_type="application/rtf")
+    response["Content-Disposition"] = 'attachment; filename="bfg_records.rtf"'
+    return response

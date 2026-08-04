@@ -1,6 +1,7 @@
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
 from .models import Fungi, Record, Site
+from .viewFunctions import getFungiObjects
 import datetime
 
 @require_GET
@@ -14,10 +15,11 @@ def fungiSuggestions(request):
     
     dup = "false"
     if date != None and site != None:
-        fungus = Fungi.objects.filter(fullName=q)
-        if fungus.count() == 1:
+        #fungus = Fungi.objects.filter(fullName=q)
+        fungus, _, _ = getFungiObjects(q)
+        if fungus != None:
             date = datetime.datetime.strptime(date, "%Y-%m-%d").date()
-            rec = Record.objects.filter(fungusFK=fungus.first(), siteFK=Site.objects.get(id=site), dateFound=date)
+            rec = Record.objects.filter(fungusFK=fungus, siteFK=Site.objects.get(id=site), dateFound=date)
             
             if rec.count() > 0:
                 dup = "true"

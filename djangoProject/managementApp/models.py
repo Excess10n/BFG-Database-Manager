@@ -8,7 +8,7 @@ class Member(models.Model):
     firstname = models.CharField(max_length=20, null=False, blank=False)
     surname = models.CharField(max_length=20, null=False, blank=False)
     fullName = models.CharField(max_length=196)
-    initials = models.CharField(max_length=5)
+    initials = models.CharField(max_length=10)
     dateUpdated = models.DateField()
     isDeleted = models.BooleanField(default=False)
     profile = models.OneToOneField(User, related_name="user_profile", on_delete=models.CASCADE, null=True, blank=True)
@@ -21,7 +21,8 @@ class Member(models.Model):
     
     class Meta:
         permissions = [
-            ("manager", "full db management access")
+            ("manager", "full db management access"),
+            ("member", "access to view db")
         ]
 
 class Genus(models.Model):
@@ -39,14 +40,13 @@ class Group(models.Model):
         return self.name
 
 class Fungi(models.Model):
-    uniqueCode = models.CharField(max_length=15, null=False, blank=False, unique=True)
-    genus = models.CharField(max_length=64)
-    species = models.CharField(max_length=64)
-    variety = models.CharField(max_length=64)
-    group = models.CharField(max_length=64)
-    fullName = models.CharField(max_length=196)
-    commonName = models.CharField(max_length=128)
+    fullName = models.CharField(max_length=196, unique=True)
+    englishName = models.CharField(max_length=128)
     currentName = models.ForeignKey('FungiCurrent', on_delete=models.CASCADE, related_name='Fungi_current', null=True)
+    author = models.CharField(max_length=128)
+    group = models.CharField(max_length=64)
+    taxonGroup = models.CharField(max_length=64)
+    currentTVK = models.CharField(max_length=64)
     remarks = models.TextField()
     dateUpdated = models.DateField()
     creatorFK = models.ForeignKey(Member, on_delete=models.RESTRICT, null=False, related_name='Fungi_creator')
@@ -54,13 +54,6 @@ class Fungi(models.Model):
 
     def __str__(self):
         return self.fullName
-    
-    def save(self, *args, **kwargs):
-        if self.variety == "":
-            self.fullName = f"{self.genus} {self.species}"
-        else:
-            self.fullName = f"{self.genus} {self.species} {self.variety}"
-        super(Fungi, self).save(*args, **kwargs)
 
 class FungiCurrent(models.Model):
     currentFungus = models.OneToOneField(Fungi, on_delete=models.CASCADE, null=False)
@@ -69,6 +62,7 @@ class FungiCurrent(models.Model):
 
 class FungiArchive(models.Model):
     fungiFK = models.OneToOneField(Fungi, on_delete=models.CASCADE)
+    uniqueCode = models.CharField(max_length=15, null=False, blank=False, unique=True)
     GBChkLst = models.BooleanField()
     groupOld = models.CharField(max_length=64, null=True)
     interpretCode = models.IntegerField(null=True)
@@ -79,17 +73,21 @@ class FungiArchive(models.Model):
         return self.fungiFK
 
 class Site(models.Model):
-    name = models.CharField(max_length=16, null=False, blank=False, unique=True)
-    reportingName = models.CharField(max_length=64)
+    name = models.CharField(max_length=64, null=False, blank=False, unique=True)
     gridRef = models.CharField(max_length=20)
     county = models.CharField(max_length=20)
     VC = models.IntegerField(validators=[MaxValueValidator(100)], null=True)
-    country = models.CharField(max_length=20)
     type = models.CharField(max_length=64)
     remarks = models.TextField()
     dateUpdated = models.DateField(auto_now_add=True)
     creatorFK = models.ForeignKey(Member, on_delete=models.RESTRICT, null=False, related_name='Site_creator')
     updaterFK = models.ForeignKey(Member, on_delete=models.RESTRICT, null=False, related_name='Site_updater')
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['VC']),
+        ]
+
     def __str__(self):
         return self.name
 
@@ -137,17 +135,27 @@ class Record(models.Model):
     firstRecord = models.CharField(max_length=1, choices=First)
     litRef = models.CharField(max_length=64, null=True, blank=True)
     DNATest = models.CharField(max_length=7, choices=Dna, null=True, blank=True)
-    DNAseq = models.CharField(max_length=256, null=True, blank=True)
+    DNAseq = models.CharField(max_length=16383, null=True, blank=True)
     image = models.ImageField(null=True, blank=True)
     photographerFK = models.ForeignKey(Member, on_delete=models.RESTRICT, null=True, related_name='Record_photographer')
-    knownDup = models.BooleanField(default=False)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['dateFound']),
+            models.Index(fields=['dateFound', 'siteFK']),
+            models.Index(fields=['dateFound', 'recorderFK']),
+            models.Index(fields=['fungusFK', 'siteFK']),
+            models.Index(fields=['collectorFK', 'dateFound']),
+            models.Index(fields=['identifierFK', 'dateFound']),
+        ]
 
     def __str__(self):
         return self.uniqueCode
     
     def save(self, *args, **kwargs):
-        self.dayOfYear = self.dateFound.timetuple().tm_yday
-        super(Record, self).save(*args, **kwargs)
+        if self.dateFound != None:
+            self.dayOfYear = self.dateFound.timetuple().tm_yday
+            super(Record, self).save(*args, **kwargs)
 
 class RecordArchive(models.Model):
     recFK = models.OneToOneField(Record, on_delete=models.CASCADE)

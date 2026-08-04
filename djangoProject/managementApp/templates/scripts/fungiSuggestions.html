@@ -1,49 +1,62 @@
 <script>
-//const input = document.querySelector('input[list="fungusList"]');
-const datalist = document.getElementById("fungusList");
 let controller = null;
 
 const params = new Proxy(new URLSearchParams(window.location.search), {
     get: (searchParams, prop) => searchParams.get(prop),
 });
-//console.log(params)
+
+function getOrCreateDatalist(input) {
+    let datalist = document.getElementById("fungusList");
+    if (!datalist) {
+        datalist = document.createElement("datalist");
+        datalist.id = "fungusList";
+        input.parentNode.appendChild(datalist);
+    }
+    return datalist;
+}
+
+function updateFungusLabel(input, isDuplicate) {
+    const label = document.querySelector(`label[for="${input.id}"]`) || input.closest("div")?.querySelector("label");
+    if (!label) return;
+
+    if (!label.dataset.originalText) {
+        label.dataset.originalText = label.textContent.trim();
+    }
+
+    label.textContent = isDuplicate ? "Fungus (Name already used)" : label.dataset.originalText;
+}
 
 document.querySelectorAll('input[list="fungusList"]').forEach(input => {
     input.addEventListener("input", async () => {
         const query = input.value;
 
-        // Cancel previous request if user types fast
         if (controller) controller.abort();
         controller = new AbortController();
 
-        var url = "";
-        if (params.date != null && params.site != null){
-            url = `/json/ajax/fungi/?q=${encodeURIComponent(query)}&date=${params.date}&site=${params.site}`;
-        } else {
-            url = `/json/ajax/fungi/?q=${encodeURIComponent(query)}`;
+        let url = `/json/ajax/fungi/?q=${encodeURIComponent(query)}`;
+        if (params.date != null && params.site != null) {
+            url += `&date=${params.date}&site=${params.site}`;
         }
 
-        const response = await fetch(url, {
-            signal: controller.signal
-        });
+        try {
+            const response = await fetch(url, { signal: controller.signal });
+            const data = await response.json();
+            const datalist = getOrCreateDatalist(input);
 
-        const data = await response.json();
+            datalist.innerHTML = "";
+            (data.results || []).forEach(fungus => {
+                const option = document.createElement("option");
+                option.value = fungus;
+                datalist.appendChild(option);
+            });
 
-        datalist.innerHTML = ""; // Clear old options
-
-        data.results.forEach(fungus => {
-            const option = document.createElement("option");
-            option.value = fungus;
-            datalist.appendChild(option);
-        });
-
-        label = document.querySelectorAll(`label[for='${input.id}']`).item(0)
-        if (data.dup == "true") {
-            label.innerHTML = "Fungus (Name already used)"
-        } else {
-            label.innerHTML = "Fungus"
+            const isDuplicate = String(data.dup || "false").toLowerCase() === "true";
+            updateFungusLabel(input, isDuplicate);
+        } catch (error) {
+            if (error.name !== "AbortError") {
+                console.error("Fungus autocomplete error:", error);
+            }
         }
-
     });
 });
 </script>

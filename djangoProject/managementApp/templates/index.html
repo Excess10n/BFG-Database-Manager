@@ -3,7 +3,11 @@
 {% block content %}
 {% if user.is_authenticated %}
     <div class="mx-auto">
+        {% if isManager %}
         <h4 style="text-align:center">Welcome to the BFG Database manager</h4>
+        {% else %}
+        <h4 style="text-align:center">Welcome to the restrcited member view of the BFG Database</h4>
+        {% endif %}
         <div class="row row-cols-1 row-cols-md-4 g-4">
         {% for page in pages %}
             <div class="col">
