@@ -1,0 +1,51 @@
+<div>
+    <div>
+        <h2>BFG Fungi Walk at {{site}}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{{date}}</h2>
+    </div>
+    <table cellpadding="0" cellspacing="0">
+        <thead>
+            <tr>
+                <th><h3><b>Latin species name</b></h3></th>
+                <th><h3><b>English name</b></h3></th>
+                <th><h3><b>Substrate</b></h3></th>
+                <th><h3><b>Association</b></h3></th>
+                <th><h3><b>New Record</b></h3></th>
+                <th>Coll.</th>
+                <th>Id.</th>
+                <th>Conf.</th>
+                <th><h3><b>Notes</b><h3></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for sort in sortedRecords %}
+                <tr><td><h3><i><b>{{sort.group}}</b></i><h3></td></tr>
+                {% for record in sort.records %}
+                    <tr>
+                        <td>{{ record.fungusFK }}</td>
+                        <td>{{ record.fungusFK.currentFungus.englishName}}</td>
+                        <td>{{ record.substrate }}</td>
+                        <td>{{ record.assoc1 }}</td>
+                        {% if record.firstRecord == "S" %}
+                        <td>For Site</td>
+                        {% elif record.firstRecord == "B" %}
+                        <td>For County</td>
+                        {% elif record.firstRecord == "D" %}
+                        <td>For Database</td>
+                        {% else %}
+                        <td></td>
+                        {% endif %}
+                        <td>{{ record.collectorFK.initials }}</td>
+                        <td>{{ record.identifierFK.initials }}</td>
+                        {% if record.confirmerFK.initials != None %}
+                            <td>{{ record.confirmerFK.initials }}</td>
+                        {% endif %}
+                        <td>{{ record.remarks }}</td>
+                    </tr>
+                {% endfor %}
+            {% endfor %}
+        </tbody>
+    </table>
+    <h2>Species total for visit:&nbsp;&nbsp;&nbsp;&nbsp;{{total}}</h2>
+    <br/><br/>
+    <p>{{members}}</p>
+</div>

@@ -1,5 +1,5 @@
 from django.urls import path, include
-from .views import IndexView, RecordBrowseView, RecordEditView, RecordEditSingle, RecordDelete, RecordDelete2, FungusView, SiteView, SiteEditSingle, SiteDelete, SubstrView, SubstrDelete, AssocView, AssocDelete, MemberView, MemberEditSingle, MemberDelete, ExportView
+from .views import IndexView, RecordBrowseView, RecordEditView, RecordEditSingle, RecordDelete, RecordDelete2, FungusView, FungusEditSingle, FungusDelete, SiteView, SiteEditSingle, SiteDelete, SubstrView, SubstrDelete, AssocView, AssocDelete, MemberView, MemberEditSingle, MemberDelete, ExportView, ExportFRDBI, ExportExcel, ExportReport
 from .jsonViews import fungiSuggestions
 
 urlpatterns = [
@@ -12,6 +12,8 @@ urlpatterns = [
     path('record/edit/<int:id>/delete/', RecordDelete, name='RecordDelete'),
 
     path('fungus/', FungusView, name='Fungus'),
+    path('fungus/<int:id>/', FungusEditSingle, name='FungusEditSingle'),
+    path('fungus/<int:id>/delete/', FungusDelete, name='FungusDelete'),
 
     path('site/', SiteView, name='Site'),
     path('site/<int:id>/', SiteEditSingle, name='SiteEditSingle'),
@@ -25,9 +27,12 @@ urlpatterns = [
 
     path('member/', MemberView, name='Member'),
     path('member/<int:id>/', MemberEditSingle, name='MemberEditSingle'),
-    path('member/<int:id>/delete/', MemberDelete, name='SiteDelete'),
+    path('member/<int:id>/delete/', MemberDelete, name='MemberDelete'),
 
     path('export/', ExportView, name='Export'),
+    path('export/FRDBI', ExportFRDBI, name='ExportFRDBI'),
+    path('export/FRDBI/excel', ExportExcel, name='ExportExcel'),
+    path('export/report', ExportReport, name='ExportReport'),
 
     # json paths
     path('json/ajax/fungi/', fungiSuggestions, name='FungiSuggestions')

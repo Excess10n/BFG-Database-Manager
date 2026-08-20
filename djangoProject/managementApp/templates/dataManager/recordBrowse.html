@@ -42,7 +42,7 @@
             {% endif %}
         </div>
         <div class="col-2">{{record.siteFK.name}}</div>
-        <div class="col-1">{{record.dateFound}}</div>
+        <div class="col-1">{{ record.dateFound|date:"d/m/Y" }}</div>
         <div class="col-1" title="{{record.identifierFK.fullName}}">{{record.identifierFK.initials}}</div>
         <div class="col-2">{{record.substrate}}</div>
         <div class="col-2">
@@ -66,6 +66,7 @@
             {% endif %}
         </div>
         <div class="col-2">
+            <div class="row">Unique Code: {{record.uniqueCode}}</div>
             <div class="row" title="{{record.confirmerFK.fullName}}">Confirmer: {{record.confirmerFK.initials}}</div>
             <div class="row" title="{{record.collectorFK.fullName}}">Collector: {{record.collectorFK.initials}}</div>
             <div class="row" title="{{record.photographerFK.fullName}}">Photographer: {{record.photographerFK.initials}}</div>
@@ -82,9 +83,12 @@
             <div class="row">Lit Ref: {{record.litRef}}</div>
             {% if record.DNATest == "Pending" %}
             <div class="row text-danger">DNA Test: {{record.DNATest}}</div>
+            {% elif record.DNATest == "None" %}
+            <div class="row">DNA Test: ...</div>
             {% else %}
             <div class="row">DNA Test: {{record.DNATest}}</div>
             {% endif %}
+            <div class="row">Certainty: {{record.certainty}}</div>
         </div>
         <div class="col-1">Remarks:</div>
         <div class="col-4">{{record.remarks}}</div>
@@ -108,7 +112,7 @@
             {% endif %}
         </div>
         <div class="col-2">{{record.siteFK.name}}</div>
-        <div class="col-1">{{record.dateFound}}</div>
+        <div class="col-1">{{ record.dateFound|date:"d/m/Y" }}</div>
         <div class="col-1" title="{{record.identifierFK.fullName}}">{{record.identifierFK.initials}}</div>
         <div class="col-2">{{record.substrate}}</div>
         <div class="col-2">

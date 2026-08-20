@@ -2,10 +2,18 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.db.models import RestrictedError, Q
-from .forms import AssocForm, SubtrForm, SiteForm, SiteSearchForm, RecordOrderForm, RecordFilterForm, RecordForm, RecordFormBrowse, RecordInitialForm, MemberForm, MemberSearchForm
+from django.http import HttpResponse
+from django.template.loader import render_to_string
+from .forms import AssocForm, SubtrForm, SiteForm, SiteSearchForm, RecordOrderForm, RecordFilterForm, RecordForm, RecordFormBrowse, RecordInitialForm, MemberForm, MemberSearchForm, ReportExportForm, FRDBIExportForm, FungiForm, FungiSearchForm
 from .models import Association, Substrate, Site, Record, Fungi, Member
-from .viewFunctions import getFungiObjects
+from .viewFunctions import getFungiObjects, createNewCurrentFungi
 import datetime
+import io
+import os
+import logging
+import zipfile
+
+import pypandoc
 
 def checkPerms(user): # True if manager, False if member
     if user.has_perm("managementApp.manager"):
@@ -130,12 +138,13 @@ def manageForm(form, new, edit, request): # function for saving record forms
             messages.add_message(request, messages.ERROR, "Record Site hasn't been entered")
             return False
 
-        recorder_id = request.GET.get("rec")
-        if recorder_id is not None:
-            inst.recorderFK = Member.objects.get(id=recorder_id)
-        else:
-            messages.add_message(request, messages.ERROR, "Recorder hasn't been entered")
-            return False
+        if new: # recorder is only added to the record if its new
+            recorder_id = request.GET.get("rec")
+            if recorder_id is not None:
+                inst.recorderFK = Member.objects.get(id=recorder_id)
+            else:
+                messages.add_message(request, messages.ERROR, "Recorder hasn't been entered")
+                return False
 
         date_value = request.GET.get("date")
         if date_value is not None:
@@ -147,13 +156,13 @@ def manageForm(form, new, edit, request): # function for saving record forms
         # get next unique code (only if this is a new entry)
         if new:
             nameCode = inst.recorderFK.initials
-            userCodes = Record.objects.filter(uniqueCode__startswith=f"R{nameCode}").order_by('-uniqueCode')
+            userCodes = Record.objects.filter(uniqueCode__startswith=f"BFG{nameCode}").order_by('-uniqueCode')
             if userCodes.exists():
                 lastCode = userCodes.first().uniqueCode
                 num = int(lastCode[-7:]) + 1
                 inst.uniqueCode = f"{lastCode[:-7]}{num:07d}"
             else:
-                inst.uniqueCode = f"R{nameCode}0000000"
+                inst.uniqueCode = f"BFG{nameCode}0000000"
     else:
         site = get_site(data["site"])
         if site is None:
@@ -297,13 +306,7 @@ def RecordEditView(request):
     if data == {}:
         records = Record.objects.none()
     else:
-        records = Record.objects.all().order_by('-id').filter(dateFound=data["date"], siteFK=Site.objects.get(id=data["site"]), recorderFK=Member.objects.get(id=data["rec"]))
-
-    currentPage = request.GET.get("page")
-    currentPage, pageCount, start, end, pageList = pagination(currentPage, records.count(), 20)
-    records = records[start:end]
-
-    page = {"current": currentPage, "first": currentPage == 1, "last": currentPage == pageCount, "pageCount": pageCount, "list": pageList}
+        records = Record.objects.all().order_by('-id').filter(dateFound=data["date"], siteFK=Site.objects.get(id=data["site"]))#, recorderFK=Member.objects.get(id=data["rec"]))
 
     # record orderings
     order = request.GET.get("order")
@@ -398,6 +401,14 @@ def RecordEditView(request):
         else:
             formList.append(dic)
 
+    #pagination
+    currentPage = request.GET.get("page")
+    currentPage, pageCount, start, end, pageList = pagination(currentPage, records.count(), 20)
+    formList = formList[start:end]
+
+    page = {"current": currentPage, "first": currentPage == 1, "last": currentPage == pageCount, "pageCount": pageCount, "list": pageList}
+
+
     # new form
     newForm = RecordForm("New", request.POST or None, request.FILES or None, prefix="form0")
 
@@ -465,6 +476,8 @@ def RecordBrowseView(request):
     else:
         data["dateSingle"] = None
 
+    currentPage = request.GET.get("page")
+
     filt = False
     for x in data.values():
         if x != None:
@@ -476,6 +489,7 @@ def RecordBrowseView(request):
     if form.is_valid():
         data = form.cleaned_data
         filt = True
+        currentPage = 1
     
     # filter process if data is present
     if filt:
@@ -496,12 +510,11 @@ def RecordBrowseView(request):
         month = None
 
         if data["fungus"] != "" and data["fungus"] != None:
-            try:
-                fungus, _, _ = getFungiObjects(data["fungus"])
-                param += f"fungus={data['fungus']}&"
-            except:
+            fungus, _, _ = getFungiObjects(data["fungus"])
+            if fungus == None:
                 messages.add_message(request, messages.ERROR, f"Fungus \"{data['fungus']}\" not found")
                 redirect(RecordBrowseView)
+            param += f"fungus={data['fungus']}&"
 
         if data["site"] != "" and data["site"] != None:
             try:
@@ -672,7 +685,7 @@ def RecordBrowseView(request):
         length = records.count()
 
     # pagination
-    currentPage = request.GET.get("page")
+    
     currentPage, pageCount, start, end, pageList = pagination(currentPage, length)
     records = records[start:end]
 
@@ -766,13 +779,192 @@ def RecordDelete2(request, id):
     
     return redirect('/record/browse?' + param)
 
+# -----------
+# fungi views
+# -----------
+
+def clean_synonyms(text):
+    print(text)
+    spl = text.split("\n")
+    arr = []
+    for s in spl:
+        if s.strip() != "":
+            arr.append(s.strip())
+    return arr
+
 def FungusView(request):
-    context = {}
+    if not request.user.is_authenticated:
+        raise PermissionDenied()
+
+    if not checkPerms(request.user):
+        raise PermissionDenied()
+    
+    param = ""
+    new = request.GET.get("new") == "true"
+    if new:
+        param += "new=true&"
+    else:
+        param += "new=false&"
+
+    fungus = request.GET.get("search")
+    searchForm = FungiSearchForm(request.POST or None, initial={"fungus": fungus}, prefix="searchForm")
+    if request.method == "POST" and "searchForm-fungus" in request.POST:
+        if searchForm.is_valid():
+            fungus = searchForm.cleaned_data["fungus"]
+            param += f"search={fungus}&"
+            return redirect('/fungus?' + param)
+    else:
+        if fungus != None:
+            param += f"search={fungus}&"
+
+    form = FungiForm("Add", request.POST or None, prefix="newForm")
+    if form.is_valid():
+        inst = form.save(commit=False)
+        inst.creatorFK = request.user.user_profile
+        inst.updaterFK = request.user.user_profile
+        inst.dateUpdated = datetime.datetime.now()
+        inst.save()
+        curr = createNewCurrentFungi(inst.id)
+        # handle alt names
+        alts = clean_synonyms(form.cleaned_data["synonyms"])
+        for alt in alts:
+            kwargs = {
+                'fullName': alt,
+                'englishName': "",
+                'author': "",
+                'group': "",
+                'taxonGroup': "",
+                'currentTVK': "",
+                'currentName': curr,
+                'dateUpdated': datetime.datetime.now(),
+                'creatorFK': request.user.user_profile,
+                'updaterFK': request.user.user_profile
+            }
+            Fungi(**kwargs).save()
+        messages.add_message(request, messages.INFO, "Added new fungus")
+        return redirect('/fungus?' + param)
+    
+    if fungus != None:
+        fungi = Fungi.objects.filter(fullName__icontains=fungus, currentName=None).order_by('fullName')
+    else:
+        fungi = Fungi.objects.filter(currentName=None).order_by('fullName')
+
+    currentPage = request.GET.get("page")
+    currentPage, pageCount, start, end, pageList = pagination(currentPage, fungi.count())
+    fungi = fungi[start:end]
+
+    page = {"current": currentPage, "first": currentPage == 1, "last": currentPage == pageCount, "pageCount": pageCount, "list": pageList}
+
+    context = {"newForm": form, "searchForm": searchForm, "new": new, "fungi": fungi, "param": param, "page": page}
     return render(request, 'dataManager/fungus.html', context)
 
-# ---------
-# site view
-# ---------
+
+def FungusEditSingle(request, id):
+    if not request.user.is_authenticated:
+        raise PermissionDenied()
+
+    if not checkPerms(request.user):
+        raise PermissionDenied()
+    
+    fungus = get_object_or_404(Fungi, id=id)
+
+    param = ""
+    deleteOption = False
+    for key, value in request.GET.items():
+        if key == "deleteOption":
+            deleteOption = value == "True"
+            continue
+        if value is not None:
+            param += f"{key}={value}&"
+    if param:
+        param = param[:-1]
+
+    # get existing alts
+    _, _, existing = getFungiObjects(fungus.fullName)
+    existing = existing.values_list("fullName", flat=True)
+    string = ""
+    for e in existing:
+        string = string + e + "\n"
+    string = string[:-1]
+
+    form = FungiForm("Change", request.POST or None, instance=fungus, initial={"synonyms": string})
+    if form.is_valid():
+        inst = form.save(commit=False)
+        inst.updaterFK = request.user.user_profile
+        inst.dateUpdated = datetime.datetime.now()
+        inst.save()
+        # handle alt names
+        alts = clean_synonyms(form.cleaned_data["synonyms"])
+        toAdd = []
+        toDelete = []
+        for alt in alts:
+            if not alt in existing:
+                toAdd.append(alt)
+        for ex in existing:
+            if not ex in alts:
+                toDelete.append(ex)
+        
+        for delete in toDelete:
+            Fungi.objects.get(fullName=delete).delete()
+
+        curr, _, _ = getFungiObjects(inst.fullName)
+
+        for add in toAdd:
+            kwargs = {
+                'fullName': add,
+                'englishName': "",
+                'author': "",
+                'group': "",
+                'taxonGroup': "",
+                'currentTVK': "",
+                'currentName': curr,
+                'dateUpdated': datetime.datetime.now(),
+                'creatorFK': request.user.user_profile,
+                'updaterFK': request.user.user_profile
+            }
+            Fungi(**kwargs).save()
+        
+        messages.add_message(request, messages.INFO, "Edited fungus")
+        return redirect(f"/fungus/{id}?{param}")
+    
+    context = {"fungus": fungus, "form": form, "param": param, "deleteOption": deleteOption}
+    return render(request, 'dataManager/fungusEditSingle.html', context)
+
+
+def FungusDelete(request, id):
+    if not request.user.is_authenticated:
+        raise PermissionDenied()
+
+    if not checkPerms(request.user):
+        raise PermissionDenied()
+    
+    fungus = get_object_or_404(Fungi, id=id)
+
+    param = ""
+    for key, value in request.GET.items():
+        if value is not None:
+            param += f"{key}={value}&"
+    if param:
+        param = param[:-1]
+    
+    if request.method == "POST":
+        current, _, _ = getFungiObjects(fungus.fullName)
+        try:
+            current.delete()
+            fungus.delete()
+            messages.add_message(request, messages.INFO, "Fungus deleted")
+        except RestrictedError:
+            messages.add_message(request, messages.ERROR, "Delete failed: Fungus is used in 1 or more records")
+            return redirect(f"/fungus/{id}?{param}")
+        except:
+            messages.add_message(request, messages.ERROR, "Fungus failed to delete")
+            return redirect(f"/fungus/{id}?{param}")
+    
+    return redirect('/fungus?' + param)
+
+# ----------
+# site views
+# ----------
 
 def SiteView(request):
     if not request.user.is_authenticated:
@@ -935,7 +1127,6 @@ def MemberView(request):
                 while num.isnumeric() or num == "":
                     num = m.initials[index] + num
                     index -= 1
-                    #print(num)
                 num = num[1:]
                 if num == "":
                     num = "1"
@@ -1198,48 +1389,274 @@ def AssocDelete(request, id):
     
     return redirect("/association?delete=true")
 
-
-
-
+# ------------
+# Export views
+# ------------
 
 def ExportView(request):
-    context = {}
+    if not request.user.is_authenticated:
+        raise PermissionDenied()
+    
+    if not checkPerms(request.user):
+        raise PermissionDenied()
+
+    date = request.GET.get("date")
+    site = request.GET.get("site")
+
+    reportForm = ReportExportForm(request.POST or None, initial={"date": date, "site": site}, prefix="rep")
+    if request.method == "POST" and (f"{reportForm.prefix}-date" in request.POST) or (f"{reportForm.prefix}-site" in request.POST):
+        if reportForm.is_valid():
+            param = ""
+            date = reportForm.cleaned_data["date"]
+            if date != None and date != "":
+                param += f"date={date}&"
+
+            site = reportForm.cleaned_data["site"]
+            if site != None and site != "":
+                isSite = Site.objects.filter(name=site).exists()
+                if not isSite:
+                    messages.add_message(request, messages.ERROR, f"Site \"{site}\" not found")
+                    return redirect("/export?" + param)
+                param += f"site={site}&"
+
+            return redirect("/export?" + param)
+
+    forays = []
+    records = Record.objects.all()
+    if date != None:
+        records = records.filter(dateFound=date)
+    if site != None:
+        records = records.filter(siteFK=Site.objects.get(name=site))
+    if date == None and site == None:
+        records = records.filter(dateFound__gte=datetime.date.today() - datetime.timedelta(days=365))
+        
+    records = records.order_by("-dateFound")
+    for rec in records:
+        date_str = rec.dateFound.strftime("%Y-%m-%d")
+        x = {"dateValue": date_str, "date": rec.dateFound, "site": rec.siteFK.name}
+        if not x in forays:
+            forays.append(x)
+        if len(forays) >= 10:
+            break
+
+    FRDBIForm = FRDBIExportForm(request.POST or None, prefix="frd")
+    if FRDBIForm.is_valid():
+        return redirect(f"/export/FRDBI?dateFrom={FRDBIForm.cleaned_data['dateFrom']}&dateTo={FRDBIForm.cleaned_data['dateTo']}")
+    
+    context = {"forays": forays, "reportForm": reportForm, "FRDBIForm": FRDBIForm}
     return render(request, 'export/export.html', context)
 
+def ExportFRDBI(request):
+    if not request.user.is_authenticated:
+        raise PermissionDenied()
+    
+    if not checkPerms(request.user):
+        raise PermissionDenied()
+
+    dateFrom = request.GET.get("dateFrom")
+    dateTo = request.GET.get("dateTo")
+    site_name = request.GET.get("site")
+
+    if dateFrom == None or dateTo == None:
+        messages.add_message(request, messages.ERROR, "Invalid request")
+        return redirect("/export")
+
+    records = Record.objects.filter(dateFound__range=[dateFrom, dateTo])
+    if site_name != None:
+        try:
+            site = Site.objects.get(name=site_name)
+        except:
+            messages.add_message(request, messages.ERROR, f"Site \"{site_name}\" not found")
+            return redirect("/export")
+
+        records = records.filter(siteFK=site)
+
+    numGone = records.filter(exported=True).count()
+    numGoing = records.filter(exported=False).count()
+
+    if dateFrom == dateTo:
+        date = datetime.datetime.strptime(dateFrom, "%Y-%m-%d").strftime("%d/%m/%Y")
+        single = True
+    else:
+        date = datetime.datetime.strptime(dateFrom, "%Y-%m-%d").strftime("%d/%m/%Y") + " - " + datetime.datetime.strptime(dateTo, "%Y-%m-%d").strftime("%d/%m/%Y")
+        single = False
+
+    context = {"date": date, "dateFrom": dateFrom, "dateTo": dateTo, "numGone": numGone, "numGoing": numGoing, "site": site_name, "single": single}
+
+    return render(request, 'export/exportFRDBI.html', context)
+    
+def ExportExcel(request):
+    if not request.user.is_authenticated:
+        raise PermissionDenied()
+    
+    if not checkPerms(request.user):
+        raise PermissionDenied()
+
+    dateFrom = request.GET.get("dateFrom")
+    dateTo = request.GET.get("dateTo")
+    site_name = request.GET.get("site")
+    exported = request.GET.get("exported")
+
+    records = Record.objects.filter(dateFound__range=[dateFrom, dateTo], siteFK=Site.objects.get(name=site_name))
+    if exported == "y":
+        records = records.filter(exported=True)
+    elif exported == "n":
+        records = records.filter(exported=False)
+
+    file = "RecordDate,Site,RecordedName,Certain/Likely/Uncertain,CollectorFull,IdentifierFull,ConfirmerFull,RecAssoc1,RecAssoc2,RecAssoc3,OtherSubstrate,SiteGR,SiteCounty,SiteVC,RecSendersNo,RecRemarks,OtherLiterature,ImageName\n"
+
+    today = datetime.datetime.now()
+
+    for rec in records:
+        file += f"{rec.dateFound.strftime('%d/%m/%Y')},\"{rec.siteFK.name}\",\"{rec.fungusFK.currentFungus.fullName}\",{rec.certainty},\"{rec.collectorFK.fullName}\",\"{rec.identifierFK.fullName}\","
+        if rec.confirmerFK != None:
+            file += f"\"{rec.confirmerFK.fullName}\","
+        else:
+            file += ","
+        file += f"\"{rec.assoc1}\",\"{rec.assoc2}\",\"{rec.assoc3}\",\"{rec.substrate}\",{rec.siteFK.gridRef},{rec.siteFK.county},{rec.siteFK.VC},{rec.uniqueCode},\"{rec.remarks}\","
+        if rec.litRef != None:
+            file += f"\"{rec.litRef}\","
+        else:
+            file += ","
+        # put image name in the .csv
+        if not rec.image:
+            file += "\n"
+        else:
+            image_name = os.path.basename(rec.image.name)
+            extension = os.path.splitext(image_name)[1]
+            file += f"\"{rec.uniqueCode}{extension}\"\n"
+
+    # AI GEN for zipping every image
+    archive = io.BytesIO()
+    with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as export_zip:
+        export_zip.writestr("records.csv", file)
+        for rec in records:
+            if not rec.image:
+                continue
+            try:
+                image_name = os.path.basename(rec.image.name)
+                extension = os.path.splitext(image_name)[1]
+                with rec.image.open("rb") as image_file:
+                    export_zip.writestr(f"images/{rec.uniqueCode}{extension}", image_file.read())
+            except (OSError, ValueError) as error:
+                logging.warning("Unable to add image for record %s: %s", rec.uniqueCode, error)
+
+    response = HttpResponse(
+        archive.getvalue(),
+        content_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="Excel export {today.strftime("%d/%m/%Y")}.zip"'},
+    )
+
+    for rec in records:
+        rec.exported = True
+        rec.dateExported = today
+        rec.save()
+
+    return response
+
     # example stuff from AI:
-    records = Record.objects.select_related("fungusFK", "siteFK").all()
+def ExportReport(request):
+    if not request.user.is_authenticated:
+        raise PermissionDenied()
 
-    rtf = (
-        "{\\rtf1\\ansi\\deff0\n"
-        "{\\fonttbl{\\f0\\froman Times New Roman;}{\\f1\\fswiss Arial;}}\n"
-        "{\\colortbl ;\\red0\\green0\\blue0;}\n"
-        "\\viewkind4\\uc1\\pard\\sa200\\sl276\\slmult1\n"
-        "{\\b\\fs28 BFG Records Export}\\par\n"
-        "\\pard\\sa120\\fs20\n"
-    )
+    if not checkPerms(request.user):
+        raise PermissionDenied()
 
-    # Header row
-    rtf += (
-        "{\\b Code}\\tab"
-        "{\\b Species}\\tab"
-        "{\\b Site}\\par\n"
-    )
+    date = request.GET.get("date")
+    site_name = request.GET.get("site")
+    if not date or not site_name:
+        messages.add_message(request, messages.ERROR, "Missing date or site for report export.")
+        return redirect("/export")
 
-    for i, record in enumerate(records, start=1):
-        # Insert a page break after every 20 rows
-        if i % 20 == 0:
-            rtf += "\\page\n"
+    try:
+        site = Site.objects.get(name=site_name)
+    except Site.DoesNotExist:
+        messages.add_message(request, messages.ERROR, f"Site \"{site_name}\" not found")
+        return redirect("/export")
 
-        # Use bold/italic styling for the first field (problems here because of the {})
-        row = (
-            f"{{\\b {record.uniqueCode}}}\\tab"
-            f"{{\\i {record.fungusFK}}}\\tab"
-            f"{record.siteFK}\\par\n"
-        )
-        rtf += row
+    records = Record.objects.filter(dateFound=date, siteFK=site).order_by("fungusFK__currentFungus__fullName").order_by("fungusFK__currentFungus__group")
+    groups = []
+    sortedRecords = []
+    members = []
+    for rec in records:
+        gro = rec.fungusFK.currentFungus.group
+        if not gro in groups:
+            groups.append(gro)
+            sortedRecords.append({"group": gro, "records": [rec], "total": 1})
+        else:
+            for s in sortedRecords:
+                if s["group"] == gro:
+                    s["records"].append(rec)
+                    s["total"] += 1
+                    break
 
-    rtf += "}"
+        mem = f"{rec.collectorFK.initials}= {rec.collectorFK.firstname} {rec.collectorFK.surname}"
+        if not mem in members:
+            members.append(mem)
+
+        mem = f"{rec.identifierFK.initials}= {rec.identifierFK.firstname} {rec.identifierFK.surname}"
+        if not mem in members:
+            members.append(mem)
+
+        if rec.confirmerFK != None:
+            mem = f"{rec.confirmerFK.initials}= {rec.confirmerFK.firstname} {rec.confirmerFK.surname}"
+            if not mem in members:
+                members.append(mem)
+        
+
+    old = sortedRecords
+    sortedRecords = []
+    for o in old:
+        for i in range(len(sortedRecords)):
+            if sortedRecords[i]["total"] < o["total"]:
+                sortedRecords.insert(i, o)
+                break
+        else:
+            sortedRecords.append(o)
+
+    text = ""
+    for mem in members:
+        text = text + mem + ",&nbsp;&nbsp;&nbsp;"
+    text = text[:-19]
+
+    date = datetime.datetime.strptime(date, "%Y-%m-%d").strftime("%d/%m/%Y")
+    context = {
+        "sortedRecords": sortedRecords,
+        "date": date,
+        "site": site.name, 
+        "members": text,
+        "total": records.count()
+    }
+
+    html = render_to_string("export/report_template.html", context, request=request)
+
+    rtf = pypandoc.convert_text(html, "rtf", format="html")
+
+    rtf = rtf.replace('\\fs24', '\\fs16')
+    rtf = rtf.replace('\\fs30', '\\fs20')
+    rtf = rtf.replace('\\fs32', '\\fs28')
+
+    rtf = rtf.replace('cellx960', 'cellx2800')
+    rtf = rtf.replace('cellx1920', 'cellx5000')
+    rtf = rtf.replace('cellx2880', 'cellx7000')
+    rtf = rtf.replace('cellx3840', 'cellx9000')
+    rtf = rtf.replace('cellx4800', 'cellx10600')
+    rtf = rtf.replace('cellx5760', 'cellx11200')
+    rtf = rtf.replace('cellx6720', 'cellx11800')
+    rtf = rtf.replace('cellx7680', 'cellx12600')
+    rtf = rtf.replace('cellx8640', 'cellx16000')
+
+    rtf = rtf.replace('sa180', 'sa0')
+    rtf = rtf.replace(r'{\pard\intbl \ql \f0 \fs16 \sa0 \li0 \fi0 \outlinelevel2 \b \fs20 \par}', '')
+
+    rtf = r'{\rtf1\ansi\deff0{\fonttbl{\f0\froman Arial;}}\paperw16836\paperh11904\margl567\margr792\margt284\margb188\gutter0' + rtf + '}'
+
+    rtf = rtf.replace(r'\pard \ql \f0 \fs16 \sa0 \li0 \fi0 \outlinelevel1 \b \fs28 BFG Fungi Walk at', r'\pard \qc \f0 \fs16 \sa400 \li0 \fi0 \outlinelevel1 \b \fs28 BFG Fungi Walk at')
+
+    rtf = rtf.replace('&nbsp;', ' ')
+
+    rtf = rtf.replace(r'\pard \ql \f0 \fs16 \sa0 \li0 \fi0 \outlinelevel1 \b \fs28 Species total for visit:', r'\pard \qc \f0 \fs16 \sa0 \li0 \fi0 \outlinelevel1 \b \fs28 Species total for visit:')
 
     response = HttpResponse(rtf, content_type="application/rtf")
-    response["Content-Disposition"] = 'attachment; filename="bfg_records.rtf"'
+    response["Content-Disposition"] = f'attachment; filename="BFG Walk Report {date}.rtf"'
     return response

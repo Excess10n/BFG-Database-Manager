@@ -114,6 +114,11 @@ class Record(models.Model):
         NO = 'No'
         PENDING = 'Pending'
 
+    class Certain(models.TextChoices):
+        CERTAIN = 'Certain'
+        LIKELY = 'Likely'
+        UNCERTAIN = 'Uncertain'
+
     uniqueCode = models.CharField(max_length=15, null=False, blank=False, unique=True)
     fungusFK = models.ForeignKey(FungiCurrent, on_delete=models.RESTRICT, null=False)
     siteFK = models.ForeignKey(Site, on_delete=models.RESTRICT, null=False)
@@ -127,8 +132,8 @@ class Record(models.Model):
     assoc3  = models.CharField(max_length=128, null=False, blank=True)
     dateFound = models.DateField()
     dateEntered = models.DateField(auto_now_add=True)
-    sentBMS = models.BooleanField(default=False)
-    dateSentBMS = models.DateField(null=True)
+    exported = models.BooleanField(default=False)
+    dateExported = models.DateField(null=True)
     remarks = models.TextField(null=True, blank=True)
     dateUpdated = models.DateField()
     updaterFK  = models.ForeignKey(Member, on_delete=models.RESTRICT, null=False, related_name='Record_updater')
@@ -138,6 +143,7 @@ class Record(models.Model):
     DNAseq = models.CharField(max_length=16383, null=True, blank=True)
     image = models.ImageField(null=True, blank=True)
     photographerFK = models.ForeignKey(Member, on_delete=models.RESTRICT, null=True, related_name='Record_photographer')
+    certainty = models.CharField(max_length=9, choices=Certain, default="Certain")
 
     class Meta:
         indexes = [

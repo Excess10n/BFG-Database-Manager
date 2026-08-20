@@ -29,7 +29,6 @@ def get_substrate_names():
 def get_association_names():
     return tuple(Association.objects.values_list("name", flat=True)) + tuple(Association.objects.values_list("latin", flat=True))
 
-
 class ListTextWidget(forms.TextInput):
 
     def __init__(self, dataset, name, *args, **kwargs):
@@ -75,7 +74,7 @@ class RecordForm(forms.ModelForm):
         if english_name:
             form_fields.append(HTML(f'<div class="text-muted small">English name:</div>'))
             form_fields.append(HTML(f'<div class="text-muted small">{english_name}</div>'))
-        form_fields.append(Div('substrate'))
+        
 
         # first site/bucks/database record gets displayed
         first = getattr(self.instance, "firstRecord", None)
@@ -86,6 +85,9 @@ class RecordForm(forms.ModelForm):
                 form_fields.append(HTML(f'<div class="text-danger"><b>First Bucks Record!</b></div>'))
             elif first == "D":
                 form_fields.append(HTML(f'<div class="text-danger"><b>First Database Record!</b></div>'))
+
+        form_fields.append(Div('certainty'))
+        form_fields.append(Div('substrate'))
 
         self.helper.layout = Layout(
             Div(
@@ -119,6 +121,8 @@ class RecordForm(forms.ModelForm):
 
         self.fields['remarks'].required = False
         self.fields['DNATest'].required = False
+        if buttonText == "New":
+            self.fields['certainty'].initial = "Certain"
         self.fields['image'].widget = forms.ClearableFileInput(attrs={
             'class': 'form-control custom-file-input',
             'accept': 'image/*'
@@ -149,7 +153,8 @@ class RecordForm(forms.ModelForm):
             "remarks",
             "litRef",
             "DNATest",
-            "image"
+            "image",
+            "certainty"
         ]
         labels = {
             #"fungusFK": "Fungus",
@@ -163,7 +168,8 @@ class RecordForm(forms.ModelForm):
             "remarks": "Remarks",
             "litRef": "Lit Ref.",
             "DNATest": "DNA Test?",
-            "image": "Image"
+            "image": "Image",
+            "certainty": "Certainty"
         }
         widgets = {
             #"fungusFK": forms.TextInput(attrs={"list": "fungusList", "autocomplete": "off"}),
@@ -186,6 +192,7 @@ class RecordFormBrowse(forms.ModelForm):
         if english_name:
             form_fields.append(HTML(f'<div class="text-muted small">English name:</div>'))
             form_fields.append(HTML(f'<div class="text-muted small">{english_name}</div>'))
+        form_fields.append(Div('certainty'))
         form_fields.append(Div('site'))
         form_fields.append(Div('dateFound'))
 
@@ -257,7 +264,8 @@ class RecordFormBrowse(forms.ModelForm):
             "DNATest",
             "DNAseq",
             "image",
-            "dateFound"
+            "dateFound",
+            "certainty"
         ]
         labels = {
             "remarks": "Remarks",
@@ -265,7 +273,8 @@ class RecordFormBrowse(forms.ModelForm):
             "DNATest": "DNA Test?",
             "image": "Image",
             "dateFound": "Date",
-            "DNAseq": "DNA Sequence"
+            "DNAseq": "DNA Sequence",
+            "certainty": "Certainty"
         }
         widgets = {
             "remarks": forms.Textarea(attrs={"rows": 5}),
@@ -340,6 +349,76 @@ class RecordOrderForm(forms.Form):
         widget=forms.RadioSelect,
         choices=CHOICES,
     )
+
+class FungiForm(forms.ModelForm):
+    def __init__(self, buttonText, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.layout = Layout(
+            Div(
+                Div('fullName', css_class="col-3"),
+                Div('englishName', css_class="col-3"),
+                Div('author', css_class="col-2"),
+                Div('group', css_class="col-2"),
+                Div('taxonGroup', css_class="col-2"),
+                Div('currentTVK', css_class="col-2"),
+                Div('remarks', css_class='col-6'),
+                Div('synonyms', css_class='col-3'),
+                Div(bootstrap.FormActions(
+                    Submit('submit', buttonText, css_class='btn btn-primary')),
+                    css_class='col'
+                    ),
+                css_class='row',
+            )
+        )
+
+        self.fields['englishName'].required = False
+        self.fields['author'].required = False
+        self.fields['currentTVK'].required = False
+        self.fields['remarks'].required = False
+
+    synonyms = forms.CharField(
+        required=False,
+        label="Alternative names",
+        widget=forms.Textarea(attrs={"rows": 10}),
+        help_text="Enter one name per line"
+    )
+
+    class Meta:
+        model = Fungi
+        fields = [
+            "fullName",
+            "englishName",
+            "author",
+            "group",
+            "taxonGroup",
+            "currentTVK",
+            "remarks"
+        ]
+        labels = {
+            "fullName": "Full Name",
+            "englishName": "English Name",
+            "author": "Author",
+            "group": "Group",
+            "taxonGroup": "Taxon Group",
+            "currentTVK": "Current TVK",
+            "remarks": "Remarks"
+        }
+        widgets = {
+            "remarks": forms.Textarea(attrs={"rows": 5}),
+        }
+
+class FungiSearchForm(forms.Form):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.layout = Layout(
+            Div('fungus'),
+            Div(bootstrap.FormActions(
+                Submit('submit', 'Search', css_class='btn btn-primary'))
+            )
+        )
+    fungus = forms.CharField(label="Fungus", max_length=64, required=False, widget=forms.TextInput(attrs={"list": "fungusList", "autocomplete": "off"}))
 
 class SiteForm(forms.ModelForm):
     def __init__(self, buttonText, *args, **kwargs):
@@ -476,3 +555,12 @@ class AssocForm(forms.ModelForm):
             "name",
             "latin"
         ]
+
+
+class ReportExportForm(forms.Form):
+    date = forms.DateField(label="Date of foray", required=False, widget=forms.TextInput(attrs={'type': 'date'}))
+    site = forms.CharField(label="Foray location", required=False, max_length=64, widget=ListTextWidget(dataset=get_site_names, name="siteList"))
+
+class FRDBIExportForm(forms.Form):
+    dateFrom = forms.DateField(label="Date From", required=True, widget=forms.TextInput(attrs={'type': 'date'}))
+    dateTo = forms.DateField(label="Date To", required=True, widget=forms.TextInput(attrs={'type': 'date'}))

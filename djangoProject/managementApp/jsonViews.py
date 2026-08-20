@@ -1,11 +1,20 @@
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
+from django.core.exceptions import PermissionDenied
 from .models import Fungi, Record, Site
 from .viewFunctions import getFungiObjects
+from .views import checkPerms
 import datetime
 
 @require_GET
 def fungiSuggestions(request):
+
+    if not request.user.is_authenticated:
+            raise PermissionDenied()
+            
+    if not checkPerms(request.user):
+        raise PermissionDenied()
+
     q = request.GET.get("q")
     date = request.GET.get("date")
     site = request.GET.get("site")

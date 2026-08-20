@@ -14,10 +14,10 @@
 {% if new %}
     <a href="/member?page={{page.current}}" class="button-class"><button type="button" class="btn btn-danger">Cancel</button></a>
     <div class="container">
-            <form method="POST" enctype="multipart/form-data">
-                {% csrf_token %}
-                {% crispy newForm %}
-            </form>
+        <form method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+            {% crispy newForm %}
+        </form>
     </div>
 {% else %}
     <a href="/member?new=true&page={{page.current}}" class="button-class"><button type="button" class="btn btn-primary">Add new</button></a>
