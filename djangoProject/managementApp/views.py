@@ -1,17 +1,21 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
+from django.core import serializers
 from django.core.exceptions import PermissionDenied
 from django.db.models import RestrictedError, Q
 from django.http import HttpResponse
 from django.template.loader import render_to_string
-from .forms import AssocForm, SubtrForm, SiteForm, SiteSearchForm, RecordOrderForm, RecordFilterForm, RecordForm, RecordFormBrowse, RecordInitialForm, MemberForm, MemberSearchForm, ReportExportForm, FRDBIExportForm, FungiForm, FungiSearchForm
-from .models import Association, Substrate, Site, Record, Fungi, Member
-from .viewFunctions import getFungiObjects, createNewCurrentFungi
+from .forms import AssocForm, SubtrForm, SiteForm, SiteSearchForm, RecordOrderForm, RecordFilterForm, RecordForm, RecordFormBrowse, RecordInitialForm, MemberForm, MemberSearchForm, MemberLoginForm, ReportExportForm, FRDBIExportForm, FungiForm, FungiSearchForm
+from .models import Association, Substrate, Site, Record, RecordArchive, Fungi, FungiCurrent, FungiArchive, Member, MemberLogin
+from django.contrib.auth.models import User, Permission
+from .viewFunctions import getFungiObjects, createNewCurrentFungi, databaseBackupOverwrite
 import datetime
 import io
+import itertools
 import os
 import logging
 import zipfile
+import json
 
 import pypandoc
 
@@ -1115,6 +1119,42 @@ def MemberView(request):
         if member != None:
             param += f"search={member}&"
 
+    # BFGmember login
+    if MemberLogin.objects.count() == 0:
+        login = None
+        loginForm = MemberLoginForm("Change manager login details", request.POST or None, prefix="loginForm")
+    else:
+        login = MemberLogin.objects.first()
+        loginForm = MemberLoginForm("Change manager login details", request.POST or None, prefix="loginForm", initial={"username": login.username})
+
+    if request.method == "POST" and "loginForm-username" in request.POST:
+        if searchForm.is_valid():
+            username = loginForm.cleaned_data["username"]
+            password = loginForm.cleaned_data["password"]
+            conf = loginForm.cleaned_data["confPassword"]
+            if username == "" or password == "" or conf == "":
+                messages.add_message(request, messages.ERROR, f"username or password field is empty")
+                return redirect(f"/member")
+            if password != conf:
+                messages.add_message(request, messages.ERROR, f"Passwords do not match")
+                return redirect(f"/member")
+    
+            if login != None:
+                user = member.profile
+                user.set_password(password)
+                user.username = username
+                user.save()
+                messages.add_message(request, messages.INFO, "Changed manager details")
+                return redirect(f"/member")
+            
+            user = User.objects.create_user(username, None, password)
+            permission = Permission.objects.get(codename='manager')
+            user.user_permissions.add(permission)
+            member.profile = user
+            member.save()
+            messages.add_message(request, messages.INFO, "Created new manager")
+            return redirect(f"/member")
+
     # form
     form = MemberForm("Add", request.POST or None, prefix="newForm")
     if form.is_valid():
@@ -1194,15 +1234,60 @@ def MemberEditSingle(request, id):
     if param:
         param = param[:-1]
 
-    form = MemberForm("Change", request.POST or None, instance=member)
-    if form.is_valid():
-        inst = form.save(commit=False)
-        inst.dateUpdated = datetime.datetime.now()
-        inst.save()
-        messages.add_message(request, messages.INFO, "Edited member")
-        return redirect(f"/member/{id}?{param}")
+    form = MemberForm("Change", request.POST or None, instance=member, prefix="editForm")
+    if request.method == "POST" and "editForm-firstname" in request.POST:
+        if form.is_valid():
+            inst = form.save(commit=False)
+            inst.dateUpdated = datetime.datetime.now()
+            inst.save()
+            messages.add_message(request, messages.INFO, "Edited member")
+            return redirect(f"/member/{id}?{param}")
+
+    # manager management
+    isAdmin = False
+    current = False
+    if member.profile == None:
+        loginForm = MemberLoginForm("Create new manager", request.POST or None, prefix="loginForm")
+        isManager = False
+    else:
+        loginForm = MemberLoginForm("Change manager login details", request.POST or None, prefix="loginForm", initial={"username": member.profile.username})
+        isManager = True
+        if member.profile.is_superuser:
+            isAdmin = True
+        if member.profile == request.user:
+            current = True
     
-    context = {"member": member, "form": form, "param": param, "deleteOption": deleteOption}
+    if loginForm.is_valid():
+        username = loginForm.cleaned_data["username"]
+        password = loginForm.cleaned_data["password"]
+        conf = loginForm.cleaned_data["confPassword"]
+        if username == "" or password == "" or conf == "":
+            messages.add_message(request, messages.ERROR, f"username or password field is empty")
+            return redirect(f"/member/{id}?{param}")
+        if password != conf:
+            messages.add_message(request, messages.ERROR, f"Passwords do not match")
+            return redirect(f"/member/{id}?{param}")
+
+        if isManager:
+            user = member.profile
+            user.set_password(password)
+            user.username = username
+            user.save()
+            messages.add_message(request, messages.INFO, "Changed manager details")
+            if current:
+                return redirect("/")
+            return redirect(f"/member/{id}?{param}")
+        
+        user = User.objects.create_user(username, None, password)
+        permission = Permission.objects.get(codename='manager')
+        user.user_permissions.add(permission)
+        member.profile = user
+        member.save()
+        messages.add_message(request, messages.INFO, "Created new manager")
+        return redirect(f"/member/{id}?{param}")
+
+    
+    context = {"member": member, "form": form, "loginForm": loginForm, "param": param, "deleteOption": deleteOption, "isManager": isManager, "isAdmin": isAdmin, "current": current}
     return render(request, 'dataManager/memberEditSingle.html', context)
 
 def MemberDelete(request, id):
@@ -1223,8 +1308,12 @@ def MemberDelete(request, id):
         param = param[:-1]
 
     if member.surname == "anon":
-            messages.add_message(request, messages.ERROR, "anon can't be deleted")
-            return redirect(f"/member/{id}?{param}")
+        messages.add_message(request, messages.ERROR, "anon can't be deleted")
+        return redirect(f"/member/{id}?{param}")
+    
+    if member.profile != None:
+        messages.add_message(request, messages.ERROR, "This member is a manager and can't be deleted")
+        return redirect(f"/member/{id}?{param}")
     
     if request.method == "POST":
         replacement_member = Member.objects.get(surname="anon")
@@ -1266,6 +1355,44 @@ def MemberDelete(request, id):
         messages.add_message(request, messages.INFO, "Member deleted")
     
     return redirect('/member?' + param)
+
+def ManagerDelete(request, id):
+    if not request.user.is_authenticated:
+        raise PermissionDenied()
+
+    if not checkPerms(request.user):
+        raise PermissionDenied()
+    
+    member = get_object_or_404(Member, id=id)
+
+    # get the query paramters to be redirected to
+    param = ""
+    for key, value in request.GET.items():
+        if value is not None:
+            param += f"{key}={value}&"
+    if param:
+        param = param[:-1]
+
+    if member.profile == None:
+        messages.add_message(request, messages.ERROR, "Manager delete failed: This member is not a manager")
+        return redirect(f"/member/{id}?{param}")
+    
+    if member.profile == request.user:
+        messages.add_message(request, messages.ERROR, "Manager delete failed: You cannot delete your own manager details")
+        return redirect(f"/member/{id}?{param}")
+
+    if member.profile.is_superuser:
+        messages.add_message(request, messages.ERROR, "Manager delete failed: This member is an admin")
+        return redirect(f"/member/{id}?{param}")
+    
+    if request.method == "POST":
+        user = member.profile
+        member.profile = None
+        member.save()
+        user.delete()
+        messages.add_message(request, messages.INFO, "Manager deleted")
+    
+    return redirect(f"/member/{id}?{param}")
 
 # ---------------
 # SUBSTRATE VIEWS
@@ -1660,3 +1787,47 @@ def ExportReport(request):
     response = HttpResponse(rtf, content_type="application/rtf")
     response["Content-Disposition"] = f'attachment; filename="BFG Walk Report {date}.rtf"'
     return response
+
+
+def ExportBackup(request):
+    if not request.user.is_authenticated:
+        raise PermissionDenied()
+
+    if not checkPerms(request.user):
+        raise PermissionDenied()
+
+    models = [Association, Substrate, Site, Record, RecordArchive, Fungi, FungiCurrent, FungiArchive, Member, User]
+
+    database_objects = itertools.chain.from_iterable(
+        model.objects.all() for model in models
+    )
+    database_json = serializers.serialize("json", database_objects, indent=2)
+    today = datetime.date.today().strftime("%Y-%m-%d")
+
+    return HttpResponse(
+        database_json,
+        content_type="application/json",
+        headers={"Content-Disposition": f'attachment; filename="BFG database {today}.json"'},
+    )
+
+
+def ImportBackup(request):
+    if not request.user.is_authenticated:
+        raise PermissionDenied()
+
+    if not checkPerms(request.user):
+        raise PermissionDenied()
+
+    if request.method != "POST":
+        return redirect("Export")
+
+    uploaded_file = request.FILES.get("database_file")
+    if uploaded_file is None:
+        messages.add_message(request, messages.ERROR, "Please select a database backup JSON file")
+        return redirect("Export")
+
+    data = json.load(uploaded_file)
+    databaseBackupOverwrite(data)
+    
+    messages.add_message(request, messages.INFO, "Backup inserted")
+    return redirect("Export")

@@ -35,5 +35,41 @@
         {% crispy form %}
     </form>
 </div>
+<br/><br/><br/>
+<h3>Manager details</h3>
+{% if isAdmin %}
+    <p>This member is a database admin, you can't change their details</p>
+{% else %}
+    {% if isManager %}
+        <p>This member <b>is</b> a database mananger, you can change their details below (note: the password is not displayed even though they have one)</p>
+    {% elif current %}
+        <p>You can change your own login details below (note: you will be signed out after changing them)</p>
+    {% else %}
+        <p>This member <b>is not</b> a database mananger, you can make them a manager by providing a username and password below</p>
+    {% endif %}
+    <div class="container">
+        <div class="row">
+            <div class="col">
+                <div class="container">
+                    <form method="POST" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        {% crispy loginForm %}
+                    </form>
+                </div>
+            </div>
+            <div class="col"></div>
+            <div class="col"></div>
+        </div>
+    </div>
+    {% if isManager %}
+        <br/><br/>
+        <div class="col-auto">
+            <form action="/member/{{member.id}}/managerDelete/?{{param}}" method="post">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">Delete Manager</button>
+            </form>
+        </div>
+    {% endif %}
+{% endif %}
 
 {% endblock content %}

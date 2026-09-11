@@ -509,6 +509,22 @@ class MemberForm(forms.ModelForm):
 class MemberSearchForm(forms.Form):
     member = forms.CharField(label="Member Search", max_length=64, required=False, widget=ListTextWidget(dataset=get_member_names, name="memberList"))
 
+class MemberLoginForm(forms.Form):
+    def __init__(self, buttonText, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.layout = Layout(
+            Div('username'),
+            Div('password'),
+            Div('confPassword'),
+            Div(bootstrap.FormActions(
+                Submit('submit', buttonText, css_class='btn btn-primary'))
+            )
+        )
+    username = forms.CharField(label="Username", max_length=64, required=False)
+    password = forms.CharField(label="Password", max_length=64, required=False)
+    confPassword = forms.CharField(label="Confirm Password", max_length=64, required=False)
+
 class SubtrForm(forms.ModelForm):
     def __init__(self, buttonText, *args, **kwargs):
         super().__init__(*args, **kwargs)

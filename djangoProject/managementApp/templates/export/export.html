@@ -60,5 +60,21 @@
     <div class="col"></div>
 </div>
 </div>
+<br/><br/>
+<h3>Database Backup</h3>
+<div class="container">
+    <a href="{% url 'ExportBackup' %}" class="button-class">
+        <button type="button" class="btn btn-primary">Download Full Database Backup</button>
+    </a>
+</div>
+<br/>
+<div class="container">
+    <form method="POST" enctype="multipart/form-data" action="{% url 'ImportBackup' %}">
+        {% csrf_token %}
+        <label for="database-file">Upload Database Backup</label>
+        <input id="database-file" type="file" name="database_file" accept="application/json,.json" required>
+        <button type="submit" class="btn btn-primary">Upload Backup</button>
+    </form>
+</div>
 
 {% endblock content %}

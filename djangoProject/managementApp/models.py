@@ -25,6 +25,9 @@ class Member(models.Model):
             ("member", "access to view db")
         ]
 
+class MemberLogin(models.Model):
+    username = models.CharField(max_length=64)
+
 class Genus(models.Model):
     name = models.CharField(max_length=64, null=False, blank=False)
     meaning = models.CharField(max_length=512, null=False, blank=False)
@@ -157,11 +160,6 @@ class Record(models.Model):
 
     def __str__(self):
         return self.uniqueCode
-    
-    def save(self, *args, **kwargs):
-        if self.dateFound != None:
-            self.dayOfYear = self.dateFound.timetuple().tm_yday
-            super(Record, self).save(*args, **kwargs)
 
 class RecordArchive(models.Model):
     recFK = models.OneToOneField(Record, on_delete=models.CASCADE)
