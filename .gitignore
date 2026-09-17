@@ -1,4 +1,16 @@
 /venv
 __pycache__/
-/djangoProject/.env
 /djangoProject/static
+/djangoProject/staticfiles
+/djangoProject/certs/
+/djangoProject/managementApp/management/commands/association.json
+/djangoProject/managementApp/management/commands/delete.py
+/djangoProject/managementApp/management/commands/fungi_old.json
+/djangoProject/managementApp/management/commands/fungi.json
+/djangoProject/managementApp/management/commands/people.json
+/djangoProject/managementApp/management/commands/record.json
+/djangoProject/managementApp/management/commands/seed.py
+/djangoProject/managementApp/management/commands/site_count.py
+/djangoProject/managementApp/management/commands/substrate_check.py
+/djangoProject/managementApp/management/commands/substrate.json
+/djangoProject/managementApp/management/commands/testing.py

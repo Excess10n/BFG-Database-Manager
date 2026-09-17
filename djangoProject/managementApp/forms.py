@@ -1,5 +1,3 @@
-from functools import lru_cache
-
 from django import forms
 from .models import Association, Substrate, Site, Fungi, Member, Record
 from crispy_forms.helper import FormHelper
@@ -10,24 +8,22 @@ from crispy_forms import bootstrap
 # AI GEN:
 # the below functions where made so you the migrations don't get stuck
 
-@lru_cache(maxsize=1)
+#@lru_cache(maxsize=1)
 def get_member_names():
     return tuple(Member.objects.values_list("fullName", flat=True))
 
-
-@lru_cache(maxsize=1)
+#@lru_cache(maxsize=1)
 def get_site_names():
     return tuple(Site.objects.values_list("name", flat=True))
 
-
-@lru_cache(maxsize=1)
+#@lru_cache(maxsize=1)
 def get_substrate_names():
     return tuple(Substrate.objects.values_list("name", flat=True))
 
-
-@lru_cache(maxsize=1)
+#@lru_cache(maxsize=1)
 def get_association_names():
     return tuple(Association.objects.values_list("name", flat=True)) + tuple(Association.objects.values_list("latin", flat=True))
+
 
 class ListTextWidget(forms.TextInput):
 
@@ -35,12 +31,17 @@ class ListTextWidget(forms.TextInput):
         super().__init__(*args)
         self._name = name
         self._dataset = dataset
-        self.attrs.update({'list':'list__%s' % self._name})
+        self.attrs.update({
+            'list': 'list__%s' % self._name,
+            'autocomplete': 'off',
+            'autocapitalize': 'none',
+            'spellcheck': 'false',
+        })
         if 'width' in kwargs:
             width = kwargs['width']
             self.attrs.update({'style': 'width:{}px;'.format(width)})
         if 'identifier' in kwargs:
-            self.attrs.update({'id':kwargs['identifier']})
+            self.attrs.update({'id': kwargs['identifier']})
 
     def _get_list(self):
         if callable(self._dataset):
@@ -52,7 +53,7 @@ class ListTextWidget(forms.TextInput):
         data_list = '<datalist id="list__%s">' % self._name
         current = []
         for item in self._get_list():
-            if item not in current:
+            if item is not None and item != '' and item not in current:
                 data_list += '<option value="%s">' % item
                 current.append(item)
         data_list += '</datalist>'

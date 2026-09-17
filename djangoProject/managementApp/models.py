@@ -143,8 +143,8 @@ class Record(models.Model):
     firstRecord = models.CharField(max_length=1, choices=First)
     litRef = models.CharField(max_length=64, null=True, blank=True)
     DNATest = models.CharField(max_length=7, choices=Dna, null=True, blank=True)
-    DNAseq = models.CharField(max_length=16383, null=True, blank=True)
-    image = models.ImageField(null=True, blank=True)
+    DNAseq = models.TextField(null=True, blank=True)
+    image = models.ImageField(null=True, blank=True, upload_to="fungi_photos")
     photographerFK = models.ForeignKey(Member, on_delete=models.RESTRICT, null=True, related_name='Record_photographer')
     certainty = models.CharField(max_length=9, choices=Certain, default="Certain")
 

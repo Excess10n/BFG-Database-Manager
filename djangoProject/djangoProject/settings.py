@@ -12,7 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 from django.contrib import messages
-from decouple import config
+from decouple import Csv, config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -27,7 +27,13 @@ SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG')
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = config('DJANGO_ALLOWED_HOSTS', default='', cast=Csv(delimiter=' '))
+CSRF_TRUSTED_ORIGINS = config(
+    'DJANGO_CSRF_TRUSTED_ORIGINS',
+    default='https://localhost',
+    cast=Csv(delimiter=' '),
+)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 
 # Application definition

@@ -111,7 +111,10 @@ def IndexView(request):
             ],
             "isManager": isManager
         }
-    return render(request, 'index.html', context)
+    if request.user.is_authenticated:
+        return render(request, 'index.html', context)
+    else:
+        return render(request, 'index_landing.html', context)
 
 def manageForm(form, new, edit, request): # function for saving record forms
     data = form.cleaned_data
@@ -1122,13 +1125,13 @@ def MemberView(request):
     # BFGmember login
     if MemberLogin.objects.count() == 0:
         login = None
-        loginForm = MemberLoginForm("Change manager login details", request.POST or None, prefix="loginForm")
+        loginForm = MemberLoginForm("Change", request.POST or None, prefix="loginForm")
     else:
         login = MemberLogin.objects.first()
-        loginForm = MemberLoginForm("Change manager login details", request.POST or None, prefix="loginForm", initial={"username": login.username})
+        loginForm = MemberLoginForm("Change", request.POST or None, prefix="loginForm", initial={"username": login.username})
 
     if request.method == "POST" and "loginForm-username" in request.POST:
-        if searchForm.is_valid():
+        if loginForm.is_valid():
             username = loginForm.cleaned_data["username"]
             password = loginForm.cleaned_data["password"]
             conf = loginForm.cleaned_data["confPassword"]
@@ -1140,19 +1143,20 @@ def MemberView(request):
                 return redirect(f"/member")
     
             if login != None:
-                user = member.profile
+                user = User.objects.get(username=login.username)
                 user.set_password(password)
                 user.username = username
                 user.save()
-                messages.add_message(request, messages.INFO, "Changed manager details")
+                login.username = username
+                login.save()
+                messages.add_message(request, messages.INFO, "Changed member login details")
                 return redirect(f"/member")
             
             user = User.objects.create_user(username, None, password)
-            permission = Permission.objects.get(codename='manager')
+            permission = Permission.objects.get(codename='member')
             user.user_permissions.add(permission)
-            member.profile = user
-            member.save()
-            messages.add_message(request, messages.INFO, "Created new manager")
+            MemberLogin(username=username).save()
+            messages.add_message(request, messages.INFO, "Changed member login details")
             return redirect(f"/member")
 
     # form
@@ -1211,7 +1215,7 @@ def MemberView(request):
             | Q(collectorFK=member)
         ).count()
 
-    context = {"newForm": form, "searchForm": searchForm, "new": new, "members": members, "param": param, "page": page}
+    context = {"newForm": form, "searchForm": searchForm, "loginForm": loginForm, "new": new, "members": members, "param": param, "page": page}
     return render(request, 'dataManager/member.html', context)
 
 def MemberEditSingle(request, id):

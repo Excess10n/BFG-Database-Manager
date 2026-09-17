@@ -4,7 +4,7 @@ services:
     container_name: BFG-db
     restart: always
     volumes:
-      - data:/var/lib/mysql
+      - bfg_data:/var/lib/mysql
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
@@ -20,16 +20,31 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: BFG-backend
-    command: sh -c "python3 manage.py migrate --noinput && python3 manage.py collectstatic --noinput && python manage.py runserver 0.0.0.0:8000"
+    command: sh -c "python3 manage.py migrate --noinput && python3 manage.py init_admin && python3 manage.py collectstatic --noinput && python manage.py runserver 0.0.0.0:8000"
     restart: always
     volumes:
       - .:/app
-    ports:
-      - "8000:8000"
+    #ports:
+    #  - "8000:8000"
     env_file:
       - .env
     depends_on:
       db:
         condition: service_healthy
+  
+  nginx:
+    image: nginx:alpine
+    container_name: BFG-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+      - ./staticfiles:/app/staticfiles:ro
+      - ./media:/app/media:ro
+    depends_on:
+      - backend
 volumes:
-  data:
+  bfg_data:
