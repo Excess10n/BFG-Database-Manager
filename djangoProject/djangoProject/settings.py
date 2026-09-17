@@ -28,12 +28,12 @@ SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG')
 
 ALLOWED_HOSTS = config('DJANGO_ALLOWED_HOSTS', default='', cast=Csv(delimiter=' '))
-CSRF_TRUSTED_ORIGINS = config(
-    'DJANGO_CSRF_TRUSTED_ORIGINS',
-    default='https://localhost',
-    cast=Csv(delimiter=' '),
-)
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+# CSRF_TRUSTED_ORIGINS = config(
+#     'DJANGO_CSRF_TRUSTED_ORIGINS',
+#     default='https://localhost',
+#     cast=Csv(delimiter=' '),
+# )
+# SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 
 # Application definition
