@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 # Create your models here.
 
 class Member(models.Model):
-    firstname = models.CharField(max_length=20, null=False, blank=False)
+    firstname = models.CharField(max_length=20, null=True, blank=True)
     surname = models.CharField(max_length=20, null=False, blank=False)
     fullName = models.CharField(max_length=196)
     initials = models.CharField(max_length=10)
@@ -16,7 +16,10 @@ class Member(models.Model):
         return self.fullName
     
     def save(self, *args, **kwargs):
-        self.fullName = f"{self.surname}, {self.firstname}"
+        if self.firstname.strip() == "":
+            self.fullName = self.surname
+        else:
+            self.fullName = f"{self.surname}, {self.firstname}"
         super(Member, self).save(*args, **kwargs)
     
     class Meta:

@@ -19,7 +19,13 @@ import json
 
 import pypandoc
 
-def checkPerms(user): # True if manager, False if member
+def checkPerms(user, admin=False): # True if manager, False if member
+    if admin:
+        if user.is_superuser:
+            return True
+        else:
+            return False
+        
     if user.has_perm("managementApp.manager"):
         return True
     else:
@@ -1574,7 +1580,7 @@ def ExportView(request):
     if FRDBIForm.is_valid():
         return redirect(f"/export/FRDBI?dateFrom={FRDBIForm.cleaned_data['dateFrom']}&dateTo={FRDBIForm.cleaned_data['dateTo']}")
     
-    context = {"forays": forays, "reportForm": reportForm, "FRDBIForm": FRDBIForm}
+    context = {"forays": forays, "reportForm": reportForm, "FRDBIForm": FRDBIForm, "isAdmin": request.user.is_superuser}
     return render(request, 'export/export.html', context)
 
 def ExportFRDBI(request):
@@ -1819,7 +1825,7 @@ def ImportBackup(request):
     if not request.user.is_authenticated:
         raise PermissionDenied()
 
-    if not checkPerms(request.user):
+    if not checkPerms(request.user, True):
         raise PermissionDenied()
 
     if request.method != "POST":

@@ -31,31 +31,69 @@
         background-repeat: no-repeat;
         background-size: cover;
         padding: 2rem 1.5rem;
-        box-shadow: inset 0 0 0 1000px rgba(255, 255, 255, 0.12);
+        box-shadow: inset 0 0 0 1000px rgba(0, 0, 0, 0.1);
     }
 
-    .landing-page h4 {
-        background: rgba(255, 255, 255, 0.7);
+    .landing-page h1 {
+        color: rgba(254, 206, 47, 1);
         border-radius: 10px;
         padding: 0.75rem 1rem;
         display: inline-block;
         width: auto;
         max-width: 100%;
+        font-size: 140px;
     }
 
-    .landing-page .card {
-        background-color: rgba(255, 255, 255, 0.82);
-        border: 1px solid rgba(0, 0, 0, 0.08);
-        backdrop-filter: blur(2px);
+    .landing-page h2 {
+        color: rgba(255, 255, 255, 1);
+        border-radius: 10px;
+        padding: 0.75rem 1rem;
+        margin-left: 80px; 
+        display: inline-block;
+        width: auto;
+        max-width: 100%;
+        font-size: 40px;
+    }
+
+    .landing-page h3 {
+        color: rgba(254, 206, 47, 1);
+        border-radius: 10px;
+        padding: 0.75rem 1rem;
+        margin-right: 240px;
+        display: inline-block;
+        width: auto;
+        max-width: 100%;
+        font-size: 20px;
+    }
+
+    .landing-page .btn {
+        margin-right: 240px;
+        background-color: rgba(254, 206, 47, 1);
+        max-width: 100%;
+        font-size: 30px;
+        border-radius: 20px;
+        border: none;
+        padding: 0.75rem 2.5rem;
     }
 </style>
 
 <div class="landing-page">
-    <div class="mx-auto text-center">
-        <h4>Login to access the BFG Database manager</h4>
+    <div class="container">
+    <div class="row align-items-center">
+        <div class="col-auto">
+            <img src="/media/BFGlogo.jpg" alt="BFG Logo" style="height: 96px; width: auto;">
+        </div>
+        <h1 class="col-auto me-auto"><b>FRDBFG</b></h1>
     </div>
-    <div class="mx-auto mt-3" style="width: 50px;">
-        <a href="/auth/login/" class="button-class"><button class="btn btn-dark">Login</button></a>
+    </div>
+    <h2><b>Fungal Records Database for Buckinghamshire Fungus Group</b></h2>
+    <br/><br/><br/><br/><br/><br/><br/><br/><br/><br/>
+    <div class="d-flex justify-content-end">
+        <a href="/auth/login/" class="button-class"><button class="btn">&nbsp;&nbsp;&nbsp;&nbsp;LOGIN&nbsp;&nbsp;&nbsp;&nbsp;</button></a>
+    </div>
+    <br/><br/>
+    <div class="d-flex justify-content-end">
+        <h3><b><i>&#169; Bucks Funugs Group 2026 | FRDBFG website created and maintained by Jonathan Peace</i></b></h3>
     </div>
 </div>
 
