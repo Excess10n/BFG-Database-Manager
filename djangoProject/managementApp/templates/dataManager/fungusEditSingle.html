@@ -8,7 +8,7 @@
     <h2 class="col-auto me-auto">Editing fungus: {{fungus.fullName}}</h2>
     {% if deleteOption %}
         <div class="col-auto">
-            <h5>Permanently delete fungus? (This will also delete all related old names)</h5>
+            <h5>Permanently delete fungus?</h5>
         </div>
         <div class="col-auto">
             <form action="/fungus/{{fungus.id}}/delete/?{{param}}" method="post">
