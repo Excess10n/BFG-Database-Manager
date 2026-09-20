@@ -15,3 +15,4 @@ __pycache__/
 /djangoProject/managementApp/management/commands/substrate_check.py
 /djangoProject/managementApp/management/commands/substrate.json
 /djangoProject/managementApp/management/commands/testing.py
+/djangoProject/.env

@@ -20,6 +20,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: BFG-backend
+    #command: sh -c "python3 manage.py migrate --noinput && python3 manage.py init_admin && python3 manage.py collectstatic --noinput && python3 manage.py runserver 0.0.0.0:8000"
     command: sh -c "python3 manage.py migrate --noinput && python3 manage.py init_admin && python3 manage.py collectstatic --noinput && gunicorn djangoProject.wsgi:application --bind 0.0.0.0:8000 --workers 3"
     restart: always
     volumes:
