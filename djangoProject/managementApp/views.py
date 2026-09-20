@@ -289,6 +289,8 @@ def RecordEditView(request):
 
     # get page
     currentPage = request.GET.get("page")
+    if currentPage == None or currentPage == "None":
+        currentPage = 1
     
     # the form with the 3 bits of initial data
     param = ""
@@ -432,8 +434,6 @@ def RecordEditView(request):
             formList.append(dic)
 
     #pagination
-    if currentPage == None:
-        currentPage = 1
     currentPage, pageCount, start, end, pageList = pagination(currentPage, records.count(), 20)
     formList = formList[start:end]
 
