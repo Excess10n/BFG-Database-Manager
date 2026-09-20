@@ -272,6 +272,9 @@ def RecordEditView(request):
         deleteText = "true"
     else:
         deleteText = "false"
+
+    # get page
+    currentPage = request.GET.get("page")
     
     # the form with the 3 bits of initial data
     param = ""
@@ -330,7 +333,7 @@ def RecordEditView(request):
         if orderForm.is_valid():
             order = orderForm.cleaned_data["order"]
             param += f"&order={order}"
-            return redirect(f"/record/edit?page={page['current']}&delete={deleteText}&{param}")
+            return redirect(f"/record/edit?page={currentPage}&delete={deleteText}&{param}")
     
     param += f"&order={order}"
 
@@ -345,7 +348,7 @@ def RecordEditView(request):
                 done = manageForm(newForm, True, False, request)
                 if done:
                     messages.add_message(request, messages.INFO, "Added new record")
-                return redirect(f"/record/edit?page={page['current']}&delete={deleteText}&{param}&last=new")
+                return redirect(f"/record/edit?page={currentPage}&delete={deleteText}&{param}&last=new")
         else:
             try:
                 record_index = int(submitted_prefix.replace("form", "")) - 1
@@ -376,7 +379,7 @@ def RecordEditView(request):
                     done = manageForm(form, False, False, request)
                     if done:
                         messages.add_message(request, messages.INFO, "Edited record")
-                    return redirect(f"/record/edit?page={page['current']}&delete={deleteText}&{param}&last={record.id}")
+                    return redirect(f"/record/edit?page={currentPage}&delete={deleteText}&{param}&last={record.id}")
 
     # form list
     formList = []
@@ -415,7 +418,6 @@ def RecordEditView(request):
             formList.append(dic)
 
     #pagination
-    currentPage = request.GET.get("page")
     currentPage, pageCount, start, end, pageList = pagination(currentPage, records.count(), 20)
     formList = formList[start:end]
 
@@ -1634,7 +1636,11 @@ def ExportExcel(request):
     site_name = request.GET.get("site")
     exported = request.GET.get("exported")
 
-    records = Record.objects.filter(dateFound__range=[dateFrom, dateTo], siteFK=Site.objects.get(name=site_name))
+    if site_name == None:
+        records = Record.objects.filter(dateFound__range=[dateFrom, dateTo])
+    else:
+        records = Record.objects.filter(dateFound__range=[dateFrom, dateTo], siteFK=Site.objects.get(name=site_name))
+
     if exported == "y":
         records = records.filter(exported=True)
     elif exported == "n":
