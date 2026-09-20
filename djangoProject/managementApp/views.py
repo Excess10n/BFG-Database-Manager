@@ -19,7 +19,9 @@ import json
 
 import pypandoc
 
-def checkPerms(user, admin=False): # True if manager, False if member
+# returns True if the current user is manager, False if member
+# alternatively you can set admin to True to only return True if the current user is a member
+def checkPerms(user, admin=False):
     if admin:
         if user.is_superuser:
             return True
@@ -31,6 +33,9 @@ def checkPerms(user, admin=False): # True if manager, False if member
     else:
         return False
 
+# function for pagination calculations
+# takes the current page of the user, the total number of items to be displayed, and the max number of items to be displayed on 1 page
+# returns current page, the number of pages, the index of the first and last item to be displayed, the total items displayed, and page number options to be displayed to the user
 def pagination(current, total, max=50):
     if current == None:
         current = 1
@@ -56,12 +61,12 @@ def pagination(current, total, max=50):
     
     return current, pageCount, (current-1)*max, current*max, pageList
 
+# provides the index page with the relevant information
 def IndexView(request):
-    # list of pages the homepage can direct to
-    
     isManager = checkPerms(request.user)
     if isManager:
         context = {
+            # list of pages the index page can direct to
             "pages": [
                 {
                     "title": "Bulk data input",
@@ -70,7 +75,7 @@ def IndexView(request):
                 },
                 {
                     "title": "Record browser",
-                    "desc": "browse the records",
+                    "desc": "browse and edit the records",
                     "link": "/record/browse"
                 },
                 {
@@ -90,17 +95,17 @@ def IndexView(request):
                 },
                 {
                     "title": "Substrate list",
-                    "desc": "view, add, or change any substrate details",
+                    "desc": "edit the subsrate dropdown list",
                     "link": "/substrate"
                 },
                 {
                     "title": "Associated organisms list",
-                    "desc": "view, add, or change any association details",
+                    "desc": "edit the associations dropdown list",
                     "link": "/association"
                 },
                 {
                     "title": "Record export",
-                    "desc": "Export for the website or FRDBI",
+                    "desc": "export for the website or FRDBI",
                     "link": "/export"
                 }
             ],
@@ -120,9 +125,13 @@ def IndexView(request):
     if request.user.is_authenticated:
         return render(request, 'index.html', context)
     else:
+        # provide the landing page instead if the user is not logged in
         return render(request, 'index_landing.html', context)
 
-def manageForm(form, new, edit, request): # function for saving record forms
+# records are edited in multiple different locations so the logic for saving those forms is this function
+# takes the form itself, if the record is new, and if the record is being edited through the browser or not (True for browser, False for bulk)
+# returns True is successful, False if failed, the reason for failing will be added to messages
+def manageForm(form, new, edit, request):
     data = form.cleaned_data
     inst = form.save(commit=False)
 
@@ -142,7 +151,7 @@ def manageForm(form, new, edit, request): # function for saving record forms
             messages.add_message(request, messages.ERROR, f"Site \"{name}\" not found")
             return None
 
-    # get values from params
+    # get values from the pre-selected site, recorder, and date params (bulk only)
     if not edit:
         site_id = request.GET.get("site")
         if site_id is not None:
@@ -166,7 +175,7 @@ def manageForm(form, new, edit, request): # function for saving record forms
             messages.add_message(request, messages.ERROR, "Record Date hasn't been entered")
             return False
 
-        # get next unique code (only if this is a new entry)
+        # create the next availible unique code (only if this is a new entry)
         if new:
             nameCode = inst.recorderFK.initials
             userCodes = Record.objects.filter(uniqueCode__startswith=f"BFG{nameCode}").order_by('-uniqueCode')
@@ -176,6 +185,8 @@ def manageForm(form, new, edit, request): # function for saving record forms
                 inst.uniqueCode = f"{lastCode[:-7]}{num:07d}"
             else:
                 inst.uniqueCode = f"BFG{nameCode}0000000"
+
+    # if this is not bulk entered the site and member must be retrived from the form
     else:
         site = get_site(data["site"])
         if site is None:
@@ -187,11 +198,12 @@ def manageForm(form, new, edit, request): # function for saving record forms
             return False
         inst.recorderFK = recorder
 
+        # DNATest must be "Yes" for a DNAseq to be provided
         if data['DNAseq'] not in ("", None) and data['DNATest'] != "Yes":
             inst.DNAseq = ""
             messages.add_message(request, messages.ERROR, "DNA Sequence not submitted because the DNA Test? option has not been set to yes")
 
-    # Fungus needs to be the fungi object not text
+    # ensure all other fields are valid (and change the provided text into an actual object where required)
     try:
         current, _, _ = getFungiObjects(data["fungus"])
         inst.fungusFK = current
@@ -246,12 +258,14 @@ def manageForm(form, new, edit, request): # function for saving record forms
     elif not any(site_id == inst.siteFK_id for site_id, _ in site_history):
         inst.firstRecord = 'S'
 
+    # changed updater and the date it was updated
     inst.updaterFK = request.user.user_profile
     inst.dateUpdated = datetime.datetime.now()
 
     inst.save()
     return True
 
+# this was AI generated for a singular purpose only, do not touch
 def _get_submitted_record_form_prefix(post_data):
     for key in post_data.keys():
         if key.startswith("form") and "-" in key:
@@ -418,6 +432,8 @@ def RecordEditView(request):
             formList.append(dic)
 
     #pagination
+    if currentPage == None:
+        currentPage = 1
     currentPage, pageCount, start, end, pageList = pagination(currentPage, records.count(), 20)
     formList = formList[start:end]
 
@@ -1635,8 +1651,29 @@ def ExportExcel(request):
     dateTo = request.GET.get("dateTo")
     site_name = request.GET.get("site")
     exported = request.GET.get("exported")
+    style = request.GET.get("style")
 
-    if site_name == None:
+    today = datetime.datetime.now()
+    
+    if style == "2":
+        records = Record.objects.filter(dateFound__range=[dateFrom, dateTo], siteFK=Site.objects.get(name=site_name))
+
+        file = "RecordDate,Site,ReportingName,EnglishName,Collector,Identifier,Confirmer,Association 1,Association 2,Association 3,Substrate,OS Grid Ref,Comments\n"
+
+        for rec in records:
+            file += f"{rec.dateFound.strftime('%d/%m/%Y')},\"{rec.siteFK.name}\",\"{rec.fungusFK.currentFungus.fullName}\",\"{rec.fungusFK.currentFungus.englishName}\",\"{rec.collectorFK.fullName}\",\"{rec.identifierFK.fullName}\","
+            if rec.confirmerFK != None:
+                file += f"\"{rec.confirmerFK.fullName}\","
+            else:
+                file += ","
+            file += f"\"{rec.assoc1}\",\"{rec.assoc2}\",\"{rec.assoc3}\",\"{rec.substrate}\",{rec.siteFK.gridRef},\"{rec.remarks}\"\n"
+
+        response = HttpResponse(file, content_type="application/csv")
+        response["Content-Disposition"] = f'attachment; filename="Excel site owners export {today.strftime("%d/%m/%Y")}.csv"'
+        return response
+
+
+    if site_name == None or site_name == "None":
         records = Record.objects.filter(dateFound__range=[dateFrom, dateTo])
     else:
         records = Record.objects.filter(dateFound__range=[dateFrom, dateTo], siteFK=Site.objects.get(name=site_name))
@@ -1647,8 +1684,6 @@ def ExportExcel(request):
         records = records.filter(exported=False)
 
     file = "RecordDate,Site,RecordedName,Certain/Likely/Uncertain,CollectorFull,IdentifierFull,ConfirmerFull,RecAssoc1,RecAssoc2,RecAssoc3,OtherSubstrate,SiteGR,SiteCounty,SiteVC,RecSendersNo,RecRemarks,OtherLiterature,ImageName\n"
-
-    today = datetime.datetime.now()
 
     for rec in records:
         file += f"{rec.dateFound.strftime('%d/%m/%Y')},\"{rec.siteFK.name}\",\"{rec.fungusFK.currentFungus.fullName}\",{rec.certainty},\"{rec.collectorFK.fullName}\",\"{rec.identifierFK.fullName}\","

@@ -31,7 +31,8 @@
     <div class="col-1"><b>Date</b></div>
     <div class="col-2"><b>Site</b></div>
     <div class="col-2"><b>Web Export</b></div>
-    <div class="col-3"><b>FRDBI Export</b></div>
+    <div class="col-2"><b>FRDBI Export</b></div>
+    <div class="col-2"><b>Excel Site Owners Export</b></div>
 </div>
 {% for foray in forays %}
     <div class="row border-bottom border-dark">
@@ -40,8 +41,11 @@
         <div class="col-2 mt-1 mb-1">
             <a href="/export/report?date={{foray.dateValue}}&site={{foray.site}}" class="button-class"><button type="button" class="btn btn-primary">Download</button></a>
         </div>
-        <div class="col-3 mt-1 mb-1">
+        <div class="col-2 mt-1 mb-1">
             <a href="/export/FRDBI?dateFrom={{foray.dateValue}}&dateTo={{foray.dateValue}}&site={{foray.site}}" class="button-class"><button type="button" class="btn btn-primary">Open Export Page</button></a>
+        </div>
+        <div class="col-2 mt-1 mb-1">
+            <a href="/export/FRDBI/excel?dateFrom={{foray.dateValue}}&dateTo={{foray.dateValue}}&site={{foray.site}}&exported=b&style=2" class="button-class"><button type="button" class="btn btn-primary">Download</button></a>
         </div>
     </div>
 {% endfor %}
