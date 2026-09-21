@@ -41,6 +41,8 @@ def databaseBackupOverwrite(data):
         except:
             pass
 
+    del data
+
     Record.objects.all().delete()
     RecordArchive.objects.all().delete()
     FungiCurrent.objects.all().delete()
@@ -102,6 +104,7 @@ def databaseBackupOverwrite(data):
         Substrate(**d).save()
 
     print("adding records")
+    index = 0
     for d in grouped["managementApp.record"]:
         d["fungusFK"] = FungiCurrent.objects.get(id=d["fungusFK"])
         d["siteFK"] = Site.objects.get(id=d["siteFK"])
@@ -118,9 +121,18 @@ def databaseBackupOverwrite(data):
         except:
             print(d["uniqueCode"])
 
+        index += 1
+        if index % 10000 == 0:
+            print(index)
+
+    index = 0
     print("adding record archives")
     for d in grouped["managementApp.recordarchive"]:
         d["recFK"] = Record.objects.get(id=d["recFK"])
         RecordArchive(**d).save()
+
+        index += 1
+        if index % 10000 == 0:
+            print(index)
     
     print("backup insertion complete")
