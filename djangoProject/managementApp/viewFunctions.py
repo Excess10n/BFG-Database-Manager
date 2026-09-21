@@ -122,3 +122,5 @@ def databaseBackupOverwrite(data):
     for d in grouped["managementApp.recordarchive"]:
         d["recFK"] = Record.objects.get(id=d["recFK"])
         RecordArchive(**d).save()
+    
+    print("backup insertion complete")

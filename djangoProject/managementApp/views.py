@@ -434,7 +434,7 @@ def RecordEditView(request):
             formList.append(dic)
 
     #pagination
-    currentPage, pageCount, start, end, pageList = pagination(currentPage, records.count(), 20)
+    currentPage, pageCount, start, end, pageList = pagination(currentPage, records.count(), 15)
     formList = formList[start:end]
 
     page = {"current": currentPage, "first": currentPage == 1, "last": currentPage == pageCount, "pageCount": pageCount, "list": pageList}
@@ -472,6 +472,9 @@ def RecordDelete(request, id):
 
     if request.GET.get("date") != None and request.GET.get("site") != None and request.GET.get("rec") != None:
         param += f"&date={request.GET.get('date')}&site={request.GET.get('site')}&rec={request.GET.get('rec')}"
+
+    if request.GET.get("order") != None:
+        param += f"&order={request.GET.get('order')}"
     
     return redirect('/record/edit?' + param)
 
@@ -1668,8 +1671,9 @@ def ExportExcel(request):
                 file += ","
             file += f"\"{rec.assoc1}\",\"{rec.assoc2}\",\"{rec.assoc3}\",\"{rec.substrate}\",{rec.siteFK.gridRef},\"{rec.remarks}\"\n"
 
+        date = datetime.datetime.strptime(dateFrom, "%Y-%m-%d").strftime("%d/%m/%Y")
         response = HttpResponse(file, content_type="application/csv")
-        response["Content-Disposition"] = f'attachment; filename="Excel site owners export {today.strftime("%d/%m/%Y")}.csv"'
+        response["Content-Disposition"] = f'attachment; filename="Excel site owners export {date}.csv"'
         return response
 
 

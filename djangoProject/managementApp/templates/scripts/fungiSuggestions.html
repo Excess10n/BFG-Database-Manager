@@ -23,7 +23,7 @@ function updateFungusLabel(input, isDuplicate) {
         label.dataset.originalText = label.textContent.trim();
     }
 
-    label.textContent = isDuplicate ? "Fungus (Name already used)" : label.dataset.originalText;
+    label.textContent = isDuplicate ? "Fungus* (Name already used)" : label.dataset.originalText;
 }
 
 document.querySelectorAll('input[list="fungusList"]').forEach(input => {
