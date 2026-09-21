@@ -8,7 +8,7 @@ from django.template.loader import render_to_string
 from .forms import AssocForm, SubtrForm, SiteForm, SiteSearchForm, RecordOrderForm, RecordFilterForm, RecordForm, RecordFormBrowse, RecordInitialForm, MemberForm, MemberSearchForm, MemberLoginForm, ReportExportForm, FRDBIExportForm, FungiForm, FungiSearchForm
 from .models import Association, Substrate, Site, Record, RecordArchive, Fungi, FungiCurrent, FungiArchive, Member, MemberLogin
 from django.contrib.auth.models import User, Permission
-from .viewFunctions import getFungiObjects, createNewCurrentFungi, databaseBackupOverwrite
+from .viewFunctions import getFungiObjects, createNewCurrentFungi, databaseBackupOverwrite, databaseBackupOverwriteBuffered
 import datetime
 import io
 import itertools
@@ -1881,8 +1881,9 @@ def ImportBackup(request):
         messages.add_message(request, messages.ERROR, "Please select a database backup JSON file")
         return redirect("Export")
 
-    data = json.load(uploaded_file)
-    databaseBackupOverwrite(data)
+    #data = json.load(uploaded_file)
+    #databaseBackupOverwrite(data)
+    databaseBackupOverwriteBuffered(uploaded_file)
     
     messages.add_message(request, messages.INFO, "Backup inserted")
     return redirect("Export")

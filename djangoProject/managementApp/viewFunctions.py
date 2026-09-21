@@ -1,5 +1,6 @@
 from .models import Association, Substrate, Site, Record, RecordArchive, Fungi, FungiCurrent, FungiArchive, Member
 from django.contrib.auth.models import User
+import ijson
 
 def getFungiObjects(name): # returns (currentFungi, parent, array of children)
     try:
@@ -18,7 +19,7 @@ def createNewCurrentFungi(id):
     return curr
 
 
-# import system (similar to seed but more direct)
+# import system (similar to seed but more direct) (DEPRECIATED)
 def databaseBackupOverwrite(data):
     # group the lists
     grouped = {
@@ -40,8 +41,6 @@ def databaseBackupOverwrite(data):
             grouped[d["model"]].append(fields)
         except:
             pass
-
-    del data
 
     Record.objects.all().delete()
     RecordArchive.objects.all().delete()
@@ -136,3 +135,119 @@ def databaseBackupOverwrite(data):
             print(index)
     
     print("backup insertion complete")
+
+
+def databaseBackupOverwriteBuffered(file):
+    grouped = {
+        "managementApp.member": [],
+        "managementApp.fungi": [],
+        "managementApp.fungiarchive": [],
+        "managementApp.site": [],
+        #"managementApp.record": [],
+        #"managementApp.recordarchive": [],
+        "managementApp.fungicurrent": [],
+        "managementApp.association": [],
+        "managementApp.substrate": []
+    }
+
+    for d in ijson.items(file, "item"):
+        if d["model"] == "managementApp.record" or d["model"] == "managementApp.recordarchive":
+            continue
+        fields = d["fields"]
+        fields["id"] = d["pk"]
+        try:
+            grouped[d["model"]].append(fields)
+        except:
+            pass
+
+    Record.objects.all().delete()
+    RecordArchive.objects.all().delete()
+    FungiCurrent.objects.all().delete()
+    Fungi.objects.all().delete()
+    FungiArchive.objects.all().delete()
+    Site.objects.all().delete()
+    Association.objects.all().delete()
+    Substrate.objects.all().delete()
+    Member.objects.all().delete()
+
+    print("adding members")
+    for d in grouped["managementApp.member"]:
+        if d["profile"] != None:
+            d["profile"] = User.objects.get(id=d["profile"])
+        Member(**d).save()
+
+    laterFungi = []
+
+    print("adding fungi pass 1")
+    for d in grouped["managementApp.fungi"]:
+        d["creatorFK"] = Member.objects.get(id=d["creatorFK"])
+        d["updaterFK"] = Member.objects.get(id=d["updaterFK"])
+        if d["currentName"] == None:
+            Fungi(**d).save()
+        else:
+            laterFungi.append(d)
+
+    print("adding fungi connectors")
+    for d in grouped["managementApp.fungicurrent"]:
+        d["currentFungus"] = Fungi.objects.get(id=d["currentFungus"])
+        FungiCurrent(**d).save()
+
+    print("adding fungi pass 2")
+    for d in laterFungi:
+        d["currentName"] = FungiCurrent.objects.get(id=d["currentName"])
+        Fungi(**d).save()
+
+    print("adding fungi archives")
+    for d in grouped["managementApp.fungiarchive"]:
+        d["fungiFK"] = Fungi.objects.get(id=d["fungiFK"])
+        FungiArchive(**d).save()
+
+    print("adding sites")
+    for d in grouped["managementApp.site"]:
+        d["creatorFK"] = Member.objects.get(id=d["creatorFK"])
+        d["updaterFK"] = Member.objects.get(id=d["updaterFK"])
+        Site(**d).save()
+
+    print("adding associations")
+    for d in grouped["managementApp.association"]:
+        Association(**d).save()
+
+    print("adding substrates")
+    for d in grouped["managementApp.substrate"]:
+        Substrate(**d).save()
+
+    print("adding records")
+    index = 0
+    file.seek(0)
+    for d in ijson.items(file, "item"):
+        if d["model"] == "managementApp.record":
+            fields = d["fields"]
+            fields["id"] = d["pk"]
+
+            fields["fungusFK"] = FungiCurrent.objects.get(id=fields["fungusFK"])
+            fields["siteFK"] = Site.objects.get(id=fields["siteFK"])
+            fields["recorderFK"] = Member.objects.get(id=fields["recorderFK"])
+            fields["identifierFK"] = Member.objects.get(id=fields["identifierFK"])
+            if fields["confirmerFK"] != None:
+                fields["confirmerFK"] = Member.objects.get(id=fields["confirmerFK"])
+            fields["collectorFK"] = Member.objects.get(id=fields["collectorFK"])
+            fields["updaterFK"] = Member.objects.get(id=fields["updaterFK"])
+            if fields["photographerFK"] != None:
+                fields["photographerFK"] = Member.objects.get(id=fields["photographerFK"])
+            try:
+                Record(**fields).save()
+            except:
+                print(fields["uniqueCode"])
+
+
+        elif d["model"] == "managementApp.recordarchive":
+            fields = d["fields"]
+            fields["id"] = d["pk"]
+
+            fields["recFK"] = Record.objects.get(id=fields["recFK"])
+            RecordArchive(**fields).save()
+
+        index += 1
+        if index % 10000 == 0:
+            print(index)
+    
