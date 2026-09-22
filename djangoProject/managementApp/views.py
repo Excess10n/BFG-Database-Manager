@@ -714,7 +714,7 @@ def RecordBrowseView(request):
     
     else:
         # if no filter get all records
-        records = Record.objects.all().order_by('fungusFK__currentFungus__fullName')
+        records = Record.objects.all().order_by("-dateFound", "fungusFK__currentFungus__fullName")
         length = records.count()
 
     # pagination
@@ -1692,7 +1692,7 @@ def ExportExcel(request):
     elif exported == "n":
         records = records.filter(exported=False)
 
-    file = "RecordDate,Site,RecordedName,Certain/Likely/Uncertain,CollectorFull,IdentifierFull,ConfirmerFull,RecAssoc1,RecAssoc2,RecAssoc3,OtherSubstrate,SiteGR,SiteCounty,SiteVC,RecSendersNo,RecRemarks,OtherLiterature,ImageName\n"
+    file = "Collection Date,Location,Fungus Name,Certainty,Collector,Identifier,Independent Confirmer,Assoc. organism 1,Assoc. organism 2,Assoc. organism 3,Other Substrate,Map reference,County,VC no,Sender's no,Fungus Notes,Other literature,ImageName\n"
 
     for rec in records:
         file += f"{rec.dateFound.strftime('%d/%m/%Y')},\"{rec.siteFK.name}\",\"{rec.fungusFK.currentFungus.fullName}\",{rec.certainty},\"{rec.collectorFK.fullName}\",\"{rec.identifierFK.fullName}\","
