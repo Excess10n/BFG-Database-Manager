@@ -38,16 +38,16 @@
 <br/><br/>
 <div class="container">
 <div class="row border-bottom border-dark">
-    <div class="col-2"><b>First name</b></div>
     <div class="col-2"><b>Surname</b></div>
+    <div class="col-2"><b>First name</b></div>
     <div class="col-1"><b>Initials</b></div>
     <div class="col-1"><b>Total Recs.</b></div>
     <div class="col-1 mt-1"></div>
 </div>
 {% for member in members %}
     <div class="row border-bottom border-dark">
-        <div class="col-2">{{member.firstname}}</div>
         <div class="col-2">{{member.surname}}</div>
+        <div class="col-2">{{member.firstname}}</div>
         <div class="col-1">{{member.initials}}</div>
         <div class="col-1">{{member.total}}</div>
         <div class="col-1 mt-1">

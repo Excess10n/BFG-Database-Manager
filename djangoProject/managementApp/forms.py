@@ -483,8 +483,8 @@ class MemberForm(forms.ModelForm):
         self.helper = FormHelper()
         self.helper.layout = Layout(
             Div(
-                Div('firstname', css_class="col-2"),
                 Div('surname', css_class="col-2"),
+                Div('firstname', css_class="col-2"),
                 Div('initials', css_class="col-1"),
                 Div(bootstrap.FormActions(
                     Submit('submit', buttonText, css_class='btn btn-primary')),
