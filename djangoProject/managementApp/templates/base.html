@@ -4,10 +4,11 @@
 <html>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
 <link rel="stylesheet" href="{% static 'css/file-upload.css' %}">
+<link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
 
 <head>
     {% block title %}
-    <title>BFG Database Manager</title>
+    <title>FRDBFG</title>
     {% endblock title %}
 </head>
 
@@ -20,7 +21,7 @@
                 <img src="/media/BFGlogo.jpg" alt="BFG Logo" style="height: 96px; width: auto;">
             </a>
         </div>
-        <h4 class="col-auto me-auto">BFG Database Manager</h4>
+        <h4 class="col-auto me-auto">BFG Database</h4>
         <h4 class="col-auto">
             {% if user.is_authenticated %}
                 {{user.username}}

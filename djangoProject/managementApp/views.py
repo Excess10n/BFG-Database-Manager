@@ -15,7 +15,6 @@ import itertools
 import os
 import logging
 import zipfile
-import json
 
 import pypandoc
 
@@ -79,18 +78,18 @@ def IndexView(request):
                     "link": "/record/browse"
                 },
                 {
-                    "title": "Fungus list",
+                    "title": "Fungus dictionary",
                     "desc": "browse BFG's dictionary of fungi",
                     "link": "/fungus"
                 },
                 {
                     "title": "Site details",
-                    "desc": "view, add, or change any site details",
+                    "desc": "add or change any site details",
                     "link": "/site"
                 },
                 {
                     "title": "Member details",
-                    "desc": "view, add, or change any member details",
+                    "desc": "add or change any member details",
                     "link": "/member"
                 },
                 {
@@ -184,7 +183,7 @@ def manageForm(form, new, edit, request):
                 num = int(lastCode[-7:]) + 1
                 inst.uniqueCode = f"{lastCode[:-7]}{num:07d}"
             else:
-                inst.uniqueCode = f"BFG{nameCode}0000000"
+                inst.uniqueCode = f"BFG{nameCode}0000001"
 
     # if this is not bulk entered the site and member must be retrived from the form
     else:
@@ -626,7 +625,7 @@ def RecordBrowseView(request):
         if param != "":
             param = param[:-1]
 
-        records = Record.objects.all()
+        records = Record.objects.all().order_by("-dateFound", "fungusFK__currentFungus__fullName")
 
         # substrate and assoc filters
         if substrate != None:
@@ -908,6 +907,8 @@ def FungusEditSingle(request, id):
         if key == "deleteOption":
             deleteOption = value == "True"
             continue
+        if key == "new":
+            continue
         if value is not None:
             param += f"{key}={value}&"
     if param:
@@ -1071,6 +1072,8 @@ def SiteEditSingle(request, id):
     for key, value in request.GET.items():
         if key == "deleteOption":
             deleteOption = value == "True"
+            continue
+        if key == "new":
             continue
         if value is not None:
             param += f"{key}={value}&"
@@ -1259,6 +1262,8 @@ def MemberEditSingle(request, id):
     for key, value in request.GET.items():
         if key == "deleteOption":
             deleteOption = value == "True"
+            continue
+        if key == "new":
             continue
         if value is not None:
             param += f"{key}={value}&"
