@@ -400,8 +400,8 @@ class FungiForm(forms.ModelForm):
             "fullName": "Full Name",
             "englishName": "English Name",
             "author": "Author",
-            "group": "Group",
-            "taxonGroup": "Taxon Group",
+            "group": "Fungus Group",
+            "taxonGroup": "Organism Group",
             "currentTVK": "Current TVK",
             "remarks": "Remarks"
         }

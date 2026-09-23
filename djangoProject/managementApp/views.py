@@ -74,7 +74,7 @@ def IndexView(request):
                 },
                 {
                     "title": "Record browser",
-                    "desc": "browse and edit the records",
+                    "desc": "browse and edit records",
                     "link": "/record/browse"
                 },
                 {
@@ -94,7 +94,7 @@ def IndexView(request):
                 },
                 {
                     "title": "Substrate list",
-                    "desc": "edit the subsrate dropdown list",
+                    "desc": "edit the substrate dropdown list",
                     "link": "/substrate"
                 },
                 {
@@ -104,7 +104,7 @@ def IndexView(request):
                 },
                 {
                     "title": "Record export",
-                    "desc": "export for the website or FRDBI",
+                    "desc": "export for the website, FRDBI, or site owners",
                     "link": "/export"
                 }
             ],
@@ -878,6 +878,10 @@ def FungusView(request):
         return redirect('/fungus?' + param)
     
     if fungus != None:
+        # if this is true then the name provided is an old name and the new one should be returned
+        if Fungi.objects.filter(fullName=fungus, currentName__isnull=False).exists():
+            _, current, _ = getFungiObjects(fungus)
+            fungus = current.fullName
         fungi = Fungi.objects.filter(fullName__icontains=fungus, currentName=None).order_by('fullName')
     else:
         fungi = Fungi.objects.filter(currentName=None).order_by('fullName')
