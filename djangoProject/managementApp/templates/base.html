@@ -51,7 +51,31 @@
     {% block content %}
     {% endblock content %}
     </div>
+
+    <button id="scrollToTopBtn" type="button" class="btn btn-dark rounded-circle" aria-label="Back to top" title="Back to top" style="position: fixed; right: 24px; bottom: 24px; width: 48px; height: 48px; display: none; z-index: 1050;">
+        Top
+    </button>
+
     <script>
+        const scrollToTopBtn = document.getElementById('scrollToTopBtn');
+
+        const toggleScrollToTopButton = () => {
+            if (window.scrollY > 200) {
+                scrollToTopBtn.style.display = 'inline-flex';
+                scrollToTopBtn.style.alignItems = 'center';
+                scrollToTopBtn.style.justifyContent = 'center';
+            } else {
+                scrollToTopBtn.style.display = 'none';
+            }
+        };
+
+        scrollToTopBtn.addEventListener('click', () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        window.addEventListener('scroll', toggleScrollToTopButton);
+        toggleScrollToTopButton();
+
         // 1. Save the scroll position right before the page reloads
         window.addEventListener("beforeunload", () => {
             localStorage.setItem("scrollPosition", window.scrollY);

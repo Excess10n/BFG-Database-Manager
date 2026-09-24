@@ -294,6 +294,12 @@ def RecordEditView(request):
     # the form with the 3 bits of initial data
     param = ""
     data = {}
+    init_form_post = (
+        request.POST
+        if request.method == "POST"
+        and all(field in request.POST for field in ("date", "site", "rec"))
+        else None
+    )
     if request.GET.get("date") != None and request.GET.get("site") != None and request.GET.get("rec") != None:
         param = f"date={request.GET.get('date')}&site={request.GET.get('site')}&rec={request.GET.get('rec')}"
         data = {
@@ -303,16 +309,16 @@ def RecordEditView(request):
         }
         try:
             # its either initilized with the params or not
-            initForm = RecordInitialForm(request.POST or None, initial={
+            initForm = RecordInitialForm(init_form_post, initial={
                 "date": data["date"],
                 "site": Site.objects.get(id=data["site"]),
                 "rec": Member.objects.get(id=data["rec"])
             })
         except:
-            initForm = RecordInitialForm(request.POST or None)
+            initForm = RecordInitialForm(init_form_post)
         initPresent = True
     else:
-        initForm = RecordInitialForm(request.POST or None, initial={"rec": request.user.user_profile.fullName})
+        initForm = RecordInitialForm(init_form_post, initial={"rec": request.user.user_profile.fullName})
         initPresent = False
     
     if initForm.is_valid():
@@ -343,7 +349,12 @@ def RecordEditView(request):
     order = request.GET.get("order")
     if order == None:
         order = "1"
-    orderForm = RecordOrderForm(request.POST or None, initial={"order": order}, prefix="orderform")
+    order_form_post = (
+        request.POST
+        if request.method == "POST" and "orderform-order" in request.POST
+        else None
+    )
+    orderForm = RecordOrderForm(order_form_post, initial={"order": order}, prefix="orderform")
     if request.method == "POST" and f"{orderForm.prefix}-order" in request.POST:
         if orderForm.is_valid():
             order = orderForm.cleaned_data["order"]
@@ -358,12 +369,12 @@ def RecordEditView(request):
 
     if request.method == "POST" and submitted_prefix:
         if submitted_prefix == "form0":
-            newForm = RecordForm("New", request.POST or None, request.FILES or None, prefix="form0")
+            newForm = RecordForm("New", request.POST if submitted_prefix == "form0" else None, request.FILES or None, prefix="form0")
             if newForm.is_valid():
                 done = manageForm(newForm, True, False, request)
                 if done:
                     messages.add_message(request, messages.INFO, "Added new record")
-                return redirect(f"/record/edit?page={currentPage}&delete={deleteText}&{param}&last=new")
+                    return redirect(f"/record/edit?page={currentPage}&delete={deleteText}&{param}&last=new")
         else:
             try:
                 record_index = int(submitted_prefix.replace("form", "")) - 1
@@ -394,7 +405,7 @@ def RecordEditView(request):
                     done = manageForm(form, False, False, request)
                     if done:
                         messages.add_message(request, messages.INFO, "Edited record")
-                    return redirect(f"/record/edit?page={currentPage}&delete={deleteText}&{param}&last={record.id}")
+                        return redirect(f"/record/edit?page={currentPage}&delete={deleteText}&{param}&last={record.id}")
 
     # form list
     formList = []
@@ -419,7 +430,14 @@ def RecordEditView(request):
         if record.assoc3 != None:
             init["assoc3"] = record.assoc3
 
-        form = RecordForm("Change", request.POST or None, request.FILES or None, instance=record, initial=init, prefix=prefix)
+        form = RecordForm(
+            "Change",
+            request.POST if prefix == submitted_prefix else None,
+            request.FILES or None,
+            instance=record,
+            initial=init,
+            prefix=prefix,
+        )
 
         dic = {"form": form, "id": record.id, "name": record.fungusFK.currentFungus.fullName, "date": record.dateFound}
         if order == "2":
@@ -432,17 +450,20 @@ def RecordEditView(request):
         else:
             formList.append(dic)
 
-    #pagination
+    # pagination
     currentPage, pageCount, start, end, pageList = pagination(currentPage, records.count(), 15)
     formList = formList[start:end]
 
     page = {"current": currentPage, "first": currentPage == 1, "last": currentPage == pageCount, "pageCount": pageCount, "list": pageList}
 
-
     # new form
-    newForm = RecordForm("New", request.POST or None, request.FILES or None, prefix="form0")
+    newForm = RecordForm("New", request.POST if submitted_prefix == "form0" else None, request.FILES or None, prefix="form0")
 
-    context = {"formList": formList, "newForm": newForm, "initForm": initForm, "orderForm": orderForm, "page": page, "param": param, "delete": delete, "deleteText": deleteText, "initPresent": initPresent, "last": request.GET.get('last')}
+    # get species count
+    species = records.values_list("fungusFK_id", flat=True).distinct().count()
+    #Record.objects.values_list("fungusFK_id", flat=True).distinct()
+
+    context = {"formList": formList, "newForm": newForm, "initForm": initForm, "orderForm": orderForm, "page": page, "param": param, "delete": delete, "deleteText": deleteText, "initPresent": initPresent, "last": request.GET.get('last'), "species": species}
     return render(request, 'dataManager/recordEdit.html', context)
 
 def RecordDelete(request, id):
@@ -780,7 +801,7 @@ def RecordEditSingle(request, id):
         done = manageForm(form, False, True, request)
         if done:
             messages.add_message(request, messages.INFO, "Edited record")
-        return redirect(f"/record/browse/{id}?{param}")
+            return redirect(f"/record/browse/{id}?{param}")
     
     context = {"record": record, "form": form, "param": param, "deleteOption": deleteOption}
     return render(request, 'dataManager/recordEditSingle.html', context)
