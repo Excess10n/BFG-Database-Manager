@@ -1786,7 +1786,7 @@ def ExportReport(request):
         messages.add_message(request, messages.ERROR, f"Site \"{site_name}\" not found")
         return redirect("/export")
 
-    records = Record.objects.filter(dateFound=date, siteFK=site).order_by("fungusFK__currentFungus__fullName").order_by("fungusFK__currentFungus__group")
+    records = Record.objects.filter(dateFound=date, siteFK=site).order_by("fungusFK__currentFungus__group", "fungusFK__currentFungus__fullName")
     groups = []
     sortedRecords = []
     members = []
