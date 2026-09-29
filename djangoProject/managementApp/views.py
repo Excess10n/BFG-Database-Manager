@@ -16,7 +16,7 @@ import os
 import logging
 import zipfile
 
-import pypandoc
+# import pypandoc (now unused)
 
 # returns True if the current user is manager, False if member
 # alternatively you can set admin to True to only return True if the current user is a member
@@ -1828,48 +1828,104 @@ def ExportReport(request):
 
     text = ""
     for mem in members:
-        text = text + mem + ",&nbsp;&nbsp;&nbsp;"
+        text = text + mem + "   " # OLD: ",&nbsp;&nbsp;&nbsp;"
     text = text[:-19]
 
     date = datetime.datetime.strptime(date, "%Y-%m-%d").strftime("%d/%m/%Y")
-    context = {
-        "sortedRecords": sortedRecords,
-        "date": date,
-        "site": site.name, 
-        "members": text,
-        "total": records.count()
-    }
 
-    html = render_to_string("export/report_template.html", context, request=request)
+    # NEW
+    output = r'{\rtf1\ansi\deff0{\fonttbl{\f0\froman Arial;}}\paperw16836\paperh11904\margl567\margr792\margt284\margb188\gutter0{\pard \qc \f0 \fs16 \sa400 \li0 \fi0 \outlinelevel1 \b \fs28 BFG Fungi Walk at '
+    output += site.name
+    output += r'\u160 ?\u160 ?\u160 ?\u160 ?\u160 ?\u160 ?'
+    output += str(date)
+    output += r'\par}'
+    output += r'{\trowd \trgaph120\clbrdrb\brdrs\cellx2800\clbrdrb\brdrs\cellx5000\clbrdrb\brdrs\cellx7000\clbrdrb\brdrs\cellx9000\clbrdrb\brdrs\cellx10400\clbrdrb\brdrs\cellx11100\clbrdrb\brdrs\cellx11800\clbrdrb\brdrs\cellx12700\clbrdrb\brdrs\cellx16200\trkeep\intbl{'
+    output += r'{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 \outlinelevel2 \b \fs20 Latin species name\par}\cell}'
+    output += r'{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 \outlinelevel2 \b \fs20 English name\par}\cell}'
+    output += r'{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 \outlinelevel2 \b \fs20 Substrate\par}\cell}'
+    output += r'{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 \outlinelevel2 \b \fs20 Association\par}\cell}'
+    output += r'{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 \outlinelevel2 \b \fs20 New Record\par}\cell}'
+    output += r'{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 \outlinelevel2 \b \fs20 Coll.\par}\cell}'
+    output += r'{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 \outlinelevel2 \b \fs20 Id.\par}\cell}'
+    output += r'{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 \outlinelevel2 \b \fs20 Conf.\par}\cell}'
+    output += r'{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 \outlinelevel2 \b \fs20 Notes\par}\cell}'
+    output += r'}\intbl\row}'
 
-    rtf = pypandoc.convert_text(html, "rtf", format="html")
+    for sort in sortedRecords:
+        output += r'{\trowd \trgaph120\cellx2800\cellx5000\cellx7000\cellx9000\cellx10400\cellx11100\cellx11800\cellx12700\cellx16200\trkeep\intbl{'
+        output += r'{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 \outlinelevel2 \b \fs20 {\i {\b '
+        output += sort["group"]
+        output += r'}}\par}\cell}{\cell}{\cell}{\cell}{\cell}{\cell}{\cell}{\cell}{\cell}}\intbl\row}'
+        for record in sort["records"]:
+            firstText = ''
+            if record.firstRecord == "S":
+                firstText = 'For Site'
+            if record.firstRecord == "B":
+                firstText = 'For County'
+            if record.firstRecord == "D":
+                firstText = 'For Database'
+            
+            output += r'{\trowd \trgaph120\cellx2800\cellx5000\cellx7000\cellx9000\cellx10400\cellx11100\cellx11800\cellx12700\cellx16200\trkeep\intbl{'
+            output += r'{{\pard\intbl \ql \f0 \fs16 \sa0 \li0 \fi0 ' + record.fungusFK.currentFungus.fullName + r'\par}\cell}'
+            output += r'{{\pard\intbl \ql \f0 \fs16 \sa0 \li0 \fi0 ' + record.fungusFK.currentFungus.englishName + r'\par}\cell}'
+            output += r'{{\pard\intbl \ql \f0 \fs16 \sa0 \li0 \fi0 ' + repr(record.substrate)[1:-1] + r'\par}\cell}'
+            output += r'{{\pard\intbl \ql \f0 \fs16 \sa0 \li0 \fi0 ' + repr(record.assoc1)[1:-1] + r'\par}\cell}'
+            output += r'{{\pard\intbl \ql \f0 \fs16 \sa0 \li0 \fi0 ' + firstText + r'\par}\cell}'
+            output += r'{{\pard\intbl \ql \f0 \fs16 \sa0 \li0 \fi0 ' + record.collectorFK.initials + r'\par}\cell}'
+            output += r'{{\pard\intbl \ql \f0 \fs16 \sa0 \li0 \fi0 ' + record.identifierFK.initials + r'\par}\cell}'
+            if record.confirmerFK != None:
+                output += r'{{\pard\intbl \ql \f0 \fs16 \sa0 \li0 \fi0 ' + record.confirmerFK.initials + r'\par}\cell}'
+            else:
+                output += r'{\cell}'
+            output += r'{{\pard\intbl \ql \f0 \fs16 \sa0 \li0 \fi0 ' + repr(record.remarks)[1:-1] + r'\par}\cell}}\intbl\row}'
 
-    rtf = rtf.replace('\\fs24', '\\fs16')
-    rtf = rtf.replace('\\fs30', '\\fs20')
-    rtf = rtf.replace('\\fs32', '\\fs28')
+    output += r'{\pard \ql \f0 \fs16 \sa0 \li0 \fi0 \par}'
+    output += r'{\pard \qc \f0 \fs16 \sa0 \li0 \fi0 \outlinelevel1 \b \fs28 Species total for visit:\u160 ?\u160 ?\u160 ?\u160 ?'
+    output += str(records.count())
+    output += r'\par}{\pard \ql \f0 \fs16 \sa0 \li0 \fi0 \line \line \par}'
+    output += r'{\pard \ql \f0 \fs16 \sa0 \li0 \fi0 '
+    output += text
+    output += r'\par}}'
 
-    rtf = rtf.replace('cellx960', 'cellx2800')
-    rtf = rtf.replace('cellx1920', 'cellx5000')
-    rtf = rtf.replace('cellx2880', 'cellx7000')
-    rtf = rtf.replace('cellx3840', 'cellx9000')
-    rtf = rtf.replace('cellx4800', 'cellx10600')
-    rtf = rtf.replace('cellx5760', 'cellx11200')
-    rtf = rtf.replace('cellx6720', 'cellx11800')
-    rtf = rtf.replace('cellx7680', 'cellx12600')
-    rtf = rtf.replace('cellx8640', 'cellx16000')
+    # OLD
+    # context = {
+    #     "sortedRecords": sortedRecords,
+    #     "date": date,
+    #     "site": site.name, 
+    #     "members": text,
+    #     "total": records.count()
+    # }
 
-    rtf = rtf.replace('sa180', 'sa0')
-    rtf = rtf.replace(r'{\pard\intbl \ql \f0 \fs16 \sa0 \li0 \fi0 \outlinelevel2 \b \fs20 \par}', '')
+    # html = render_to_string("export/report_template.html", context, request=request)
 
-    rtf = r'{\rtf1\ansi\deff0{\fonttbl{\f0\froman Arial;}}\paperw16836\paperh11904\margl567\margr792\margt284\margb188\gutter0' + rtf + '}'
+    # rtf = pypandoc.convert_text(html, "rtf", format="html")
 
-    rtf = rtf.replace(r'\pard \ql \f0 \fs16 \sa0 \li0 \fi0 \outlinelevel1 \b \fs28 BFG Fungi Walk at', r'\pard \qc \f0 \fs16 \sa400 \li0 \fi0 \outlinelevel1 \b \fs28 BFG Fungi Walk at')
+    # rtf = rtf.replace('\\fs24', '\\fs16')
+    # rtf = rtf.replace('\\fs30', '\\fs20')
+    # rtf = rtf.replace('\\fs32', '\\fs28')
 
-    rtf = rtf.replace('&nbsp;', ' ')
+    # rtf = rtf.replace('cellx960', 'cellx2800')
+    # rtf = rtf.replace('cellx1920', 'cellx5000')
+    # rtf = rtf.replace('cellx2880', 'cellx7000')
+    # rtf = rtf.replace('cellx3840', 'cellx9000')
+    # rtf = rtf.replace('cellx4800', 'cellx10600')
+    # rtf = rtf.replace('cellx5760', 'cellx11200')
+    # rtf = rtf.replace('cellx6720', 'cellx11800')
+    # rtf = rtf.replace('cellx7680', 'cellx12600')
+    # rtf = rtf.replace('cellx8640', 'cellx16000')
 
-    rtf = rtf.replace(r'\pard \ql \f0 \fs16 \sa0 \li0 \fi0 \outlinelevel1 \b \fs28 Species total for visit:', r'\pard \qc \f0 \fs16 \sa0 \li0 \fi0 \outlinelevel1 \b \fs28 Species total for visit:')
+    # rtf = rtf.replace('sa180', 'sa0')
+    # rtf = rtf.replace(r'{\pard\intbl \ql \f0 \fs16 \sa0 \li0 \fi0 \outlinelevel2 \b \fs20 \par}', '')
 
-    response = HttpResponse(rtf, content_type="application/rtf")
+    # rtf = r'{\rtf1\ansi\deff0{\fonttbl{\f0\froman Arial;}}\paperw16836\paperh11904\margl567\margr792\margt284\margb188\gutter0' + rtf + '}'
+
+    # rtf = rtf.replace(r'\pard \ql \f0 \fs16 \sa0 \li0 \fi0 \outlinelevel1 \b \fs28 BFG Fungi Walk at', r'\pard \qc \f0 \fs16 \sa400 \li0 \fi0 \outlinelevel1 \b \fs28 BFG Fungi Walk at')
+
+    # rtf = rtf.replace('&nbsp;', ' ')
+
+    # rtf = rtf.replace(r'\pard \ql \f0 \fs16 \sa0 \li0 \fi0 \outlinelevel1 \b \fs28 Species total for visit:', r'\pard \qc \f0 \fs16 \sa0 \li0 \fi0 \outlinelevel1 \b \fs28 Species total for visit:')
+
+    response = HttpResponse(output, content_type="application/rtf")
     response["Content-Disposition"] = f'attachment; filename="BFG Walk Report {date}.rtf"'
     return response
 

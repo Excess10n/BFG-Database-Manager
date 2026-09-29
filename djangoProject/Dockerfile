@@ -6,9 +6,9 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 #Install the pandoc executable
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends pandoc \
-    && rm -rf /var/lib/apt/lists/*
+#RUN apt-get update \
+#    && apt-get install -y --no-install-recommends pandoc \
+#    && rm -rf /var/lib/apt/lists/*
 
 # Set the working directory
 WORKDIR /app
