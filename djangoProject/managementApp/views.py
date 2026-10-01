@@ -785,7 +785,7 @@ def RecordBrowseView(request):
 
     # pagination
     
-    currentPage, pageCount, start, end, pageList = pagination(currentPage, length, 100)
+    currentPage, pageCount, start, end, pageList = pagination(currentPage, length)
     records = records[start:end]
 
     page = {"current": currentPage, "first": currentPage == 1, "last": currentPage == pageCount, "pageCount": pageCount, "list": pageList}
