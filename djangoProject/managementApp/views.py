@@ -60,6 +60,51 @@ def pagination(current, total, max=50):
     
     return current, pageCount, (current-1)*max, current*max, pageList
 
+
+# function for alphabetical pagination
+# it differs by instead taking the currentPage (as a character) and the objects it must filter through
+# and just returns a pageList ontop of the filtered objects
+# the name of the field to filter on must also be included
+
+PAGINATION_CHARS = ["0","A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"]
+def alphaPagination(currentPage, objects, field):
+    # default to A
+    if currentPage == None or not currentPage in PAGINATION_CHARS:
+        currentPage = "A"
+
+    # prepare queries
+    regex_kwargs = {field + "__regex": r'^[^A-Za-z]'}
+
+    # get all the letters to include
+    pageList = []
+    for char in PAGINATION_CHARS:
+        if char == "0":
+            if objects.filter(**regex_kwargs).exists():
+                pageList.append(char)
+        else:
+            starts_kwargs = {field + "__istartswith": char}
+            if objects.filter(**starts_kwargs).exists():
+                pageList.append(char)
+
+    # check if the currentPage is in the pageList else increment currentPage until it has one
+    if len(pageList) != 0:
+        index =  PAGINATION_CHARS.index(currentPage)
+        while not currentPage in pageList:
+            index += 1
+            currentPage = PAGINATION_CHARS[index]
+            if index == 26:
+                index = 0
+
+    # filter the objects
+    if currentPage == "0":
+        objects = objects.filter(**regex_kwargs)
+    else:
+        starts_kwargs = {field + "__istartswith": currentPage}
+        objects = objects.filter(**starts_kwargs)
+
+    return currentPage, pageList, objects
+
+
 # provides the index page with the relevant information
 def IndexView(request):
     isManager = checkPerms(request.user)
@@ -740,7 +785,7 @@ def RecordBrowseView(request):
 
     # pagination
     
-    currentPage, pageCount, start, end, pageList = pagination(currentPage, length)
+    currentPage, pageCount, start, end, pageList = pagination(currentPage, length, 100)
     records = records[start:end]
 
     page = {"current": currentPage, "first": currentPage == 1, "last": currentPage == pageCount, "pageCount": pageCount, "list": pageList}
@@ -907,11 +952,17 @@ def FungusView(request):
     else:
         fungi = Fungi.objects.filter(currentName=None).order_by('fullName')
 
-    currentPage = request.GET.get("page")
-    currentPage, pageCount, start, end, pageList = pagination(currentPage, fungi.count())
-    fungi = fungi[start:end]
+    # numbered pagination (OLD)
+    # currentPage = request.GET.get("page")
+    # currentPage, pageCount, start, end, pageList = pagination(currentPage, fungi.count())
+    # fungi = fungi[start:end]
+    # page = {"current": currentPage, "first": currentPage == 1, "last": currentPage == pageCount, "pageCount": pageCount, "list": pageList}
 
-    page = {"current": currentPage, "first": currentPage == 1, "last": currentPage == pageCount, "pageCount": pageCount, "list": pageList}
+    # alphabetical pagination
+    currentPage = request.GET.get("page")
+    currentPage, pageList, fungi = alphaPagination(currentPage, fungi, "fullName")
+
+    page = {"current": currentPage, "list": pageList}
 
     context = {"newForm": form, "searchForm": searchForm, "new": new, "fungi": fungi, "param": param, "page": page}
     return render(request, 'dataManager/fungus.html', context)
@@ -1069,16 +1120,21 @@ def SiteView(request):
     else:
         sites = Site.objects.all().order_by('name')
 
-    # pagination
+    # numbered pagination (OLD)
+    # currentPage = request.GET.get("page")
+    # currentPage, pageCount, start, end, pageList = pagination(currentPage, sites.count())
+    # sites = sites[start:end]
+    # page = {"current": currentPage, "first": currentPage == 1, "last": currentPage == pageCount, "pageCount": pageCount, "list": pageList}
+
+    # alphabetical pagination
     currentPage = request.GET.get("page")
-    currentPage, pageCount, start, end, pageList = pagination(currentPage, sites.count())
-    sites = sites[start:end]
+    currentPage, pageList, sites = alphaPagination(currentPage, sites, "name")
+
+    page = {"current": currentPage, "list": pageList}
+
 
     for site in sites:
         site.total = Record.objects.filter(siteFK=site).count()
-
-    page = {"current": currentPage, "first": currentPage == 1, "last": currentPage == pageCount, "pageCount": pageCount, "list": pageList}
-
 
     context = {"newForm": form, "searchForm": searchForm, "new": new, "sites": sites, "param": param, "page": page}
     return render(request, 'dataManager/site.html', context)
@@ -1255,12 +1311,17 @@ def MemberView(request):
     else:
         members = Member.objects.all().order_by('fullName')
 
-    # pagination
-    currentPage = request.GET.get("page")
-    currentPage, pageCount, start, end, pageList = pagination(currentPage, members.count())
-    members = members[start:end]
+    # numbered pagination (OLD)
+    # currentPage = request.GET.get("page")
+    # currentPage, pageCount, start, end, pageList = pagination(currentPage, members.count())
+    # members = members[start:end]
+    # page = {"current": currentPage, "first": currentPage == 1, "last": currentPage == pageCount, "pageCount": pageCount, "list": pageList}
 
-    page = {"current": currentPage, "first": currentPage == 1, "last": currentPage == pageCount, "pageCount": pageCount, "list": pageList}
+    # alphabetical pagination
+    currentPage = request.GET.get("page")
+    currentPage, pageList, members = alphaPagination(currentPage, members, "surname")
+
+    page = {"current": currentPage, "list": pageList}
 
     for member in members:
         member.total = Record.objects.filter(
@@ -1834,7 +1895,7 @@ def ExportReport(request):
     date = datetime.datetime.strptime(date, "%Y-%m-%d").strftime("%d/%m/%Y")
 
     # NEW
-    output = r'{\rtf1\ansi\deff0{\fonttbl{\f0\froman Arial;}}\paperw16836\paperh11904\margl567\margr792\margt284\margb188\gutter0{\pard \qc \f0 \fs16 \sa400 \li0 \fi0 \outlinelevel1 \b \fs28 BFG Fungi Walk at '
+    output = r'{\rtf1\ansi\deff0{\fonttbl{\f0\froman Arial;}}\paperw16836\paperh11904\margl567\margr792\margt284\margb188\gutter0\sectd\lndscpsxn{\pard \qc \f0 \fs16 \sa400 \li0 \fi0 \outlinelevel1 \b \fs28 BFG Fungi Walk at '
     output += site.name
     output += r'\u160 ?\u160 ?\u160 ?\u160 ?\u160 ?\u160 ?'
     output += str(date)

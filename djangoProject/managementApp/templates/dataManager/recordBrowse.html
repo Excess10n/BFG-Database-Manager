@@ -3,6 +3,20 @@
 {% load crispy_forms_tags %}
 
 {% block content %}
+<style>
+.col-nar {
+    flex: 0 0 4.1667%;
+    max-width: 4.1667%;
+}
+.col-1_5 {
+    flex: 0 0 12.5%;
+    max-width: 12.5%;
+}
+.col-3_5 {
+    flex: 0 0 29.1667%;
+    max-width: 29.1667%;
+}
+</style>
 <div class="container">
 <div class="row">
     <h2 class="col-auto me-auto">Browse the records</h2>
@@ -23,10 +37,12 @@
     <div class="col-2"><b>Name as recorded</b></div>
     <div class="col-2"><b>Site</b></div>
     <div class="col-1"><b>Date</b></div>
-    <div class="col-1"><b>Ident.</b></div>
     <div class="col-2"><b>Substrate</b></div>
     <div class="col-2"><b>Associations</b></div>
-    <div class="col-1"><b>Rec. by</b></div>
+    <div class="col-nar"><b>Rec.</b></div>
+    <div class="col-nar"><b>Coll.</b></div>
+    <div class="col-nar"><b>ID.</b></div>
+    <div class="col-nar"><b>Conf.</b></div>
 </div>
 {% for record in records %}
     {% if record.id == expand %}
@@ -43,7 +59,6 @@
         </div>
         <div class="col-2">{{record.siteFK.name}}</div>
         <div class="col-1">{{ record.dateFound|date:"d/m/Y" }}</div>
-        <div class="col-1" title="{{record.identifierFK.fullName}}">{{record.identifierFK.initials}}</div>
         <div class="col-2">{{record.substrate}}</div>
         <div class="col-2">
             <div class="container">
@@ -52,23 +67,28 @@
                 <div class="row">{{record.assoc3}}</div>
             </div>
         </div>
-        <div class="col-1" title="{{record.recorderFK.fullName}}">{{record.recorderFK.initials}}</div>
+        <div class="col-nar" title="{{record.recorderFK.fullName}}">{{record.recorderFK.initials}}</div>
+        <div class="col-nar" title="{{record.collectorFK.fullName}}">{{record.collectorFK.initials}}</div>
+        <div class="col-nar" title="{{record.identifierFK.fullName}}">{{record.identifierFK.initials}}</div>
+        <div class="col-nar" title="{{record.confirmerFK.fullName}}">{{record.confirmerFK.initials}}</div>
         <div class="col-1 mt-1">
             <a href="/record/browse?page={{page.current}}&{{param}}" class="button-class"><button type="button" class="btn btn-primary">less</button></a>
         </div>
     </div>
     <div class="row border-bottom border-dark">
-        <div class="col-2">
+        <div class="col-3">
             {% if record.image %}
-                <img src="{{ record.image.url }}" alt="{{ record.image.name }}" width="150" height="150">
+                <a href="{{ record.image.url }}">
+                    <img src="{{ record.image.url }}" alt="{{ record.image.name }}" height="150">
+                </a>
             {% else %}
-                <img src="/media/no_image.png" alt="No image available" width="150" height="150">
+                <img src="/media/no_image.png" alt="No image available" height="150">
             {% endif %}
         </div>
         <div class="col-2">
-            <div class="row">Unique Code: {{record.uniqueCode}}</div>
-            <div class="row" title="{{record.confirmerFK.fullName}}">Confirmer: {{record.confirmerFK.initials}}</div>
-            <div class="row" title="{{record.collectorFK.fullName}}">Collector: {{record.collectorFK.initials}}</div>
+            <div class="row">Unique Code:</div>
+            <div class="row">{{record.uniqueCode}}</div>
+            <div class="row">&nbsp;</div>
             <div class="row" title="{{record.photographerFK.fullName}}">Photographer: {{record.photographerFK.initials}}</div>
             <br/>
             {% if record.firstRecord == "S" %}
@@ -79,7 +99,7 @@
             <div class="row text-danger"><b>First Database Record!</b></div>
             {% endif %}
         </div>
-        <div class="col-2">
+        <div class="col-1_5">
             <div class="row">Lit Ref: {{record.litRef}}</div>
             {% if record.DNATest == "Pending" %}
             <div class="row text-danger">DNA Test: {{record.DNATest}}</div>
@@ -91,7 +111,7 @@
             <div class="row">Certainty: {{record.certainty}}</div>
         </div>
         <div class="col-1">Remarks:</div>
-        <div class="col-4">{{record.remarks}}</div>
+        <div class="col-3_5">{{record.remarks}}</div>
         <div class="col-1 mt-1">
             {% if isManager %}
             <a href="/record/browse/{{record.id}}?page={{page.current}}&{{param}}&expand={{record.id}}" class="button-class"><button type="button" class="btn btn-primary">edit</button></a>
@@ -113,7 +133,6 @@
         </div>
         <div class="col-2">{{record.siteFK.name}}</div>
         <div class="col-1">{{ record.dateFound|date:"d/m/Y" }}</div>
-        <div class="col-1" title="{{record.identifierFK.fullName}}">{{record.identifierFK.initials}}</div>
         <div class="col-2">{{record.substrate}}</div>
         <div class="col-2">
             <div class="container">
@@ -122,7 +141,10 @@
                 <div class="row">{{record.assoc3}}</div>
             </div>
         </div>
-        <div class="col-1" title="{{record.recorderFK.fullName}}">{{record.recorderFK.initials}}</div>
+        <div class="col-nar" title="{{record.recorderFK.fullName}}">{{record.recorderFK.initials}}</div>
+        <div class="col-nar" title="{{record.collectorFK.fullName}}">{{record.collectorFK.initials}}</div>
+        <div class="col-nar" title="{{record.identifierFK.fullName}}">{{record.identifierFK.initials}}</div>
+        <div class="col-nar" title="{{record.confirmerFK.fullName}}">{{record.confirmerFK.initials}}</div>
         <div class="col-1 mt-1">
             <a href="/record/browse?page={{page.current}}&{{param}}&expand={{record.id}}" class="button-class"><button type="button" class="btn btn-primary">more</button></a>
         </div>

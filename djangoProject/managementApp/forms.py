@@ -24,6 +24,11 @@ def get_substrate_names():
 def get_association_names():
     return tuple(Association.objects.values_list("name", flat=True)) + tuple(Association.objects.values_list("latin", flat=True))
 
+def get_fungi_groups():
+    return tuple(Fungi.objects.values_list("group", flat=True).distinct())
+
+def get_fungi_taxonGroups():
+    return tuple(Fungi.objects.values_list("taxonGroup", flat=True).distinct())
 
 class ListTextWidget(forms.TextInput):
 
@@ -406,6 +411,8 @@ class FungiForm(forms.ModelForm):
             "remarks": "Remarks"
         }
         widgets = {
+            "group": ListTextWidget(dataset=get_fungi_groups, name="groupList"),
+            "taxonGroup": ListTextWidget(dataset=get_fungi_taxonGroups, name="taxonGroupList"),
             "remarks": forms.Textarea(attrs={"rows": 5}),
         }
 
