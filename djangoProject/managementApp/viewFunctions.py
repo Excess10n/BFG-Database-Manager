@@ -250,4 +250,26 @@ def databaseBackupOverwriteBuffered(file):
         index += 1
         if index % 10000 == 0:
             print(index)
-    
+
+def databaseBackupRecordAppend(file):
+    for d in ijson.items(file, "item"):
+        fields = d["fields"]
+        #fields["id"] = d["pk"]
+
+        fields["fungusFK"] = FungiCurrent.objects.get(id=fields["fungusFK"])
+        try:
+            fields["siteFK"] = Site.objects.get(id=fields["siteFK"])
+        except:
+            fields["siteFK"] = Site.objects.get(name=fields["siteFK"])
+        fields["recorderFK"] = Member.objects.get(id=fields["recorderFK"])
+        fields["identifierFK"] = Member.objects.get(id=fields["identifierFK"])
+        if fields["confirmerFK"] != None:
+            fields["confirmerFK"] = Member.objects.get(id=fields["confirmerFK"])
+        fields["collectorFK"] = Member.objects.get(id=fields["collectorFK"])
+        fields["updaterFK"] = Member.objects.get(id=fields["updaterFK"])
+        if fields["photographerFK"] != None:
+            fields["photographerFK"] = Member.objects.get(id=fields["photographerFK"])
+        try:
+            Record(**fields).save()
+        except:
+            print(fields["uniqueCode"])

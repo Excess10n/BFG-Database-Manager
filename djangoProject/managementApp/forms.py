@@ -78,8 +78,7 @@ class RecordForm(forms.ModelForm):
 
         form_fields = [Div('fungus')]
         if english_name:
-            form_fields.append(HTML(f'<div class="text-muted small">English name:</div>'))
-            form_fields.append(HTML(f'<div class="text-muted small">{english_name}</div>'))
+            form_fields.append(HTML(f'<div class="text-muted small">({english_name})</div>'))
         
 
         # first site/bucks/database record gets displayed
@@ -97,7 +96,7 @@ class RecordForm(forms.ModelForm):
 
         self.helper.layout = Layout(
             Div(
-                Div(*form_fields, css_class="col"),
+                Div(*form_fields, css_class="col-3"),
                 Div(
                     Div('assoc1'),
                     Div('assoc2'),
@@ -196,15 +195,14 @@ class RecordFormBrowse(forms.ModelForm):
 
         form_fields = [Div('fungus')]
         if english_name:
-            form_fields.append(HTML(f'<div class="text-muted small">English name:</div>'))
-            form_fields.append(HTML(f'<div class="text-muted small">{english_name}</div>'))
+            form_fields.append(HTML(f'<div class="text-muted small">({english_name})</div>'))
         form_fields.append(Div('certainty'))
         form_fields.append(Div('site'))
         form_fields.append(Div('dateFound'))
 
         self.helper.layout = Layout(
             Div(
-                Div(*form_fields, css_class="col"),
+                Div(*form_fields, css_class="col-3"),
                 Div(
                     Div('substrate'),
                     Div('assoc1'),

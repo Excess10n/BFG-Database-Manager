@@ -8,7 +8,7 @@ from django.template.loader import render_to_string
 from .forms import AssocForm, SubtrForm, SiteForm, SiteSearchForm, RecordOrderForm, RecordFilterForm, RecordForm, RecordFormBrowse, RecordInitialForm, MemberForm, MemberSearchForm, MemberLoginForm, ReportExportForm, FRDBIExportForm, FungiForm, FungiSearchForm
 from .models import Association, Substrate, Site, Record, RecordArchive, Fungi, FungiCurrent, FungiArchive, Member, MemberLogin
 from django.contrib.auth.models import User, Permission
-from .viewFunctions import getFungiObjects, createNewCurrentFungi, databaseBackupOverwrite, databaseBackupOverwriteBuffered
+from .viewFunctions import getFungiObjects, createNewCurrentFungi, databaseBackupOverwrite, databaseBackupOverwriteBuffered, databaseBackupRecordAppend
 import datetime
 import io
 import itertools
@@ -113,7 +113,7 @@ def IndexView(request):
             # list of pages the index page can direct to
             "pages": [
                 {
-                    "title": "Bulk data input",
+                    "title": "Data entry",
                     "desc": "add and update records in bulk",
                     "link": "/record/edit"
                 },
@@ -506,7 +506,6 @@ def RecordEditView(request):
 
     # get species count
     species = records.values_list("fungusFK_id", flat=True).distinct().count()
-    #Record.objects.values_list("fungusFK_id", flat=True).distinct()
 
     context = {"formList": formList, "newForm": newForm, "initForm": initForm, "orderForm": orderForm, "page": page, "param": param, "delete": delete, "deleteText": deleteText, "initPresent": initPresent, "last": request.GET.get('last'), "species": species}
     return render(request, 'dataManager/recordEdit.html', context)
@@ -783,6 +782,9 @@ def RecordBrowseView(request):
         records = Record.objects.all().order_by("-dateFound", "fungusFK__currentFungus__fullName")
         length = records.count()
 
+    # get species count
+    species = records.values_list("fungusFK_id", flat=True).distinct().count()
+    
     # pagination
     
     currentPage, pageCount, start, end, pageList = pagination(currentPage, length)
@@ -799,7 +801,7 @@ def RecordBrowseView(request):
     except:
         expand = -1
 
-    context = {"records": records, "param": param, "form": form, "page": page, "expand": expand, "isManager": isManager}
+    context = {"records": records, "param": param, "form": form, "page": page, "expand": expand, "isManager": isManager, "species": species}
     return render(request, 'dataManager/recordBrowse.html', context)
 
 def RecordEditSingle(request, id):
@@ -2023,6 +2025,8 @@ def ImportBackup(request):
     if request.method != "POST":
         return redirect("Export")
 
+    append = request.GET.get("append")
+
     uploaded_file = request.FILES.get("database_file")
     if uploaded_file is None:
         messages.add_message(request, messages.ERROR, "Please select a database backup JSON file")
@@ -2030,7 +2034,10 @@ def ImportBackup(request):
 
     #data = json.load(uploaded_file)
     #databaseBackupOverwrite(data)
-    databaseBackupOverwriteBuffered(uploaded_file)
+    if append:
+        databaseBackupRecordAppend(uploaded_file)
+    else:
+        databaseBackupOverwriteBuffered(uploaded_file)
     
     messages.add_message(request, messages.INFO, "Backup inserted")
     return redirect("Export")

@@ -74,9 +74,18 @@
 {% if isAdmin %}
 <br/>
 <div class="container">
-    <form method="POST" enctype="multipart/form-data" action="{% url 'ImportBackup' %}">
+    <form method="POST" enctype="multipart/form-data" action="{% url 'ImportBackup' %}?append=false">
         {% csrf_token %}
         <label for="database-file">Upload Database Backup</label>
+        <input id="database-file" type="file" name="database_file" accept="application/json,.json" required>
+        <button type="submit" class="btn btn-primary">Upload Backup</button>
+    </form>
+</div>
+<br/>
+<div class="container">
+    <form method="POST" enctype="multipart/form-data" action="{% url 'ImportBackup' %}?append=true">
+        {% csrf_token %}
+        <label for="database-file">Upload Database Backup (For appending records)</label>
         <input id="database-file" type="file" name="database_file" accept="application/json,.json" required>
         <button type="submit" class="btn btn-primary">Upload Backup</button>
     </form>

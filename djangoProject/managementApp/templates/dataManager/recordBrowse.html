@@ -3,20 +3,6 @@
 {% load crispy_forms_tags %}
 
 {% block content %}
-<style>
-.col-nar {
-    flex: 0 0 4.1667%;
-    max-width: 4.1667%;
-}
-.col-1_5 {
-    flex: 0 0 12.5%;
-    max-width: 12.5%;
-}
-.col-3_5 {
-    flex: 0 0 29.1667%;
-    max-width: 29.1667%;
-}
-</style>
 <div class="container">
 <div class="row">
     <h2 class="col-auto me-auto">Browse the records</h2>
@@ -152,6 +138,8 @@
     {% endif %}
 {% endfor %}
 </div>
+<br/><br/>
+<p>Total species count: <b>{{species}}</b></p>
 <br/>
 <nav aria-label="...">
     <ul class="pagination">
