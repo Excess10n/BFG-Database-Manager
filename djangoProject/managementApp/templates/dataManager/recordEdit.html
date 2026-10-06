@@ -40,18 +40,20 @@
             {{forayForm|crispy}}
             <input type="submit" value="Submit" class="btn btn-primary">
         </form>
+        {% if initPresent %}
+            <br/><br/><br/><br/>
+            <h4>Order</h4>
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                {{orderForm|crispy}}
+                <input type="submit" value="Change" class="btn btn-primary">
+            </form>
+        {% endif %}
     </div>
 </div>
 </div>
 <br/><br/>
 {% if initPresent %}
-<h4>Order</h4>
-<form method="POST" enctype="multipart/form-data">
-    {% csrf_token %}
-    {{orderForm|crispy}}
-    <input type="submit" value="Change" class="btn btn-primary">
-</form>
-<br/><br/>
 <div class="container">
     <div class="row border-bottom border-dark">
         {% if dupNum == "new" %}

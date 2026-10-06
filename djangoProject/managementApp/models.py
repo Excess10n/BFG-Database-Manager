@@ -16,7 +16,9 @@ class Member(models.Model):
         return self.fullName
     
     def save(self, *args, **kwargs):
-        if self.firstname.strip() == "":
+        if self.firstname == None:
+            self.fullName = self.surname
+        elif self.firstname.strip() == "":
             self.fullName = self.surname
         else:
             self.fullName = f"{self.surname}, {self.firstname}"
