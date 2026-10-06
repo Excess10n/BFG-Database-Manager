@@ -400,7 +400,6 @@ def RecordEditView(request):
     else:
         initForm = RecordInitialForm(init_form_post, initial={"rec": request.user.user_profile.fullName})
         initPresent = False
-        data = {"coll": None, "ident": None}
     
     if initForm.is_valid():
         data = initForm.cleaned_data
@@ -554,7 +553,10 @@ def RecordEditView(request):
     page = {"current": currentPage, "first": currentPage == 1, "last": currentPage == pageCount, "pageCount": pageCount, "list": pageList}
 
     # new form, also check if there is a default coll or ident
-    newForm = RecordForm("New", request.POST if submitted_prefix == "form0" else None, request.FILES or None, prefix="form0", initial={"collectorFK": data["coll"],"identifierFK": data["ident"]})
+    if data == {}:
+        newForm = RecordForm("New", request.POST if submitted_prefix == "form0" else None, request.FILES or None, prefix="form0")
+    else:
+        newForm = RecordForm("New", request.POST if submitted_prefix == "form0" else None, request.FILES or None, prefix="form0", initial={"collectorFK": data["coll"],"identifierFK": data["ident"]})
 
     # get species count
     species = records.values_list("fungusFK_id", flat=True).distinct().count()
