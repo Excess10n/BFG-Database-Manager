@@ -400,6 +400,7 @@ def RecordEditView(request):
     else:
         initForm = RecordInitialForm(init_form_post, initial={"rec": request.user.user_profile.fullName})
         initPresent = False
+        data = {"coll": None, "ident": None}
     
     if initForm.is_valid():
         data = initForm.cleaned_data
