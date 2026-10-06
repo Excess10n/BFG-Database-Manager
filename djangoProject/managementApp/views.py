@@ -5,7 +5,7 @@ from django.core.exceptions import PermissionDenied
 from django.db.models import RestrictedError, Q
 from django.http import HttpResponse
 from django.template.loader import render_to_string
-from .forms import AssocForm, SubtrForm, SiteForm, SiteSearchForm, RecordOrderForm, RecordFilterForm, RecordForm, RecordFormBrowse, RecordInitialForm, MemberForm, MemberSearchForm, MemberLoginForm, ReportExportForm, FRDBIExportForm, FungiForm, FungiSearchForm
+from .forms import AssocForm, SubtrForm, SiteForm, SiteSearchForm, RecordOrderForm, RecordFilterForm, RecordForm, RecordFormBrowse, RecordInitialForm, RecordForayForm, MemberForm, MemberSearchForm, MemberLoginForm, ReportExportForm, FRDBIExportForm, FungiForm, FungiSearchForm
 from .models import Association, Substrate, Site, Record, RecordArchive, Fungi, FungiCurrent, FungiArchive, Member, MemberLogin
 from django.contrib.auth.models import User, Permission
 from .viewFunctions import getFungiObjects, createNewCurrentFungi, databaseBackupOverwrite, databaseBackupOverwriteBuffered, databaseBackupRecordAppend
@@ -17,6 +17,8 @@ import logging
 import zipfile
 
 # import pypandoc (now unused)
+
+ANON_INITIALS = "Anon"
 
 # returns True if the current user is manager, False if member
 # alternatively you can set admin to True to only return True if the current user is a member
@@ -335,7 +337,28 @@ def RecordEditView(request):
     currentPage = request.GET.get("page")
     if currentPage == None or currentPage == "None":
         currentPage = 1
-    
+
+    # foray selector
+    foray_form_post = (
+        request.POST
+        if request.method == "POST" and "forayform-forays" in request.POST
+        else None
+    )
+    if request.GET.get("date") != None and request.GET.get("site") != None:
+        data = f"{request.GET.get('date')},{request.GET.get('site')}"
+    else:
+        data = ""
+
+    forayForm = RecordForayForm(foray_form_post, initial={"forays": data}, prefix="forayform")
+    if forayForm.is_valid():
+        forayinfo = forayForm.cleaned_data["forays"].split(",")
+        if request.GET.get("rec") != None:
+            rec = request.GET.get("rec")
+        else:
+            rec = request.user.user_profile.id
+        
+        return redirect(f"/record/edit?page={currentPage}&delete={deleteText}&date={forayinfo[0]}&site={forayinfo[1]}&rec={rec}")
+
     # the form with the 3 bits of initial data
     param = ""
     data = {}
@@ -350,15 +373,27 @@ def RecordEditView(request):
         data = {
             "date": request.GET.get('date'),
             "site": request.GET.get('site'),
-            "rec": request.GET.get('rec')
+            "rec": request.GET.get('rec'),
+            "coll": None,
+            "ident": None
         }
+        init = {
+            "date": request.GET.get('date'),
+            "site": Site.objects.get(id=request.GET.get('site')),
+            "rec": Member.objects.get(id=request.GET.get('rec'))
+        }
+        if request.GET.get("coll") != None:
+            param += f"&coll={request.GET.get('coll')}"
+            init["coll"] = Member.objects.get(id=request.GET.get('coll'))
+            data["coll"] = init["coll"].fullName
+        if request.GET.get("ident") != None:
+            param += f"&ident={request.GET.get('ident')}"
+            init["ident"] = Member.objects.get(id=request.GET.get('ident'))
+            data["ident"] = init["ident"].fullName
+        
         try:
             # its either initilized with the params or not
-            initForm = RecordInitialForm(init_form_post, initial={
-                "date": data["date"],
-                "site": Site.objects.get(id=data["site"]),
-                "rec": Member.objects.get(id=data["rec"])
-            })
+            initForm = RecordInitialForm(init_form_post, initial=init)
         except:
             initForm = RecordInitialForm(init_form_post)
         initPresent = True
@@ -382,6 +417,22 @@ def RecordEditView(request):
             return redirect('/record/edit?' + param)
 
         param = f"date={data['date']}&site={site.id}&rec={rec.id}"
+
+        if data['coll'] != "" and data['coll'] != None:
+            try:
+                coll = Member.objects.get(fullName=data['coll'])
+                param += f"&coll={coll.id}"
+            except:
+                messages.add_message(request, messages.ERROR, f"name \"{data['coll']}\" not found")
+                return redirect('/record/edit?' + param)
+        if data['ident'] != "" and data['ident'] != None:
+            try:
+                ident = Member.objects.get(fullName=data['ident'])
+                param += f"&ident={ident.id}"
+            except:
+                messages.add_message(request, messages.ERROR, f"name \"{data['ident']}\" not found")
+                return redirect('/record/edit?' + param)
+
         return redirect('/record/edit?' + param)
     
     # get records with filters from the above data
@@ -501,13 +552,13 @@ def RecordEditView(request):
 
     page = {"current": currentPage, "first": currentPage == 1, "last": currentPage == pageCount, "pageCount": pageCount, "list": pageList}
 
-    # new form
-    newForm = RecordForm("New", request.POST if submitted_prefix == "form0" else None, request.FILES or None, prefix="form0")
+    # new form, also check if there is a default coll or ident
+    newForm = RecordForm("New", request.POST if submitted_prefix == "form0" else None, request.FILES or None, prefix="form0", initial={"collectorFK": data["coll"],"identifierFK": data["ident"]})
 
     # get species count
     species = records.values_list("fungusFK_id", flat=True).distinct().count()
-
-    context = {"formList": formList, "newForm": newForm, "initForm": initForm, "orderForm": orderForm, "page": page, "param": param, "delete": delete, "deleteText": deleteText, "initPresent": initPresent, "last": request.GET.get('last'), "species": species}
+    
+    context = {"formList": formList, "newForm": newForm, "initForm": initForm, "forayForm": forayForm, "orderForm": orderForm, "page": page, "param": param, "delete": delete, "deleteText": deleteText, "initPresent": initPresent, "last": request.GET.get('last'), "species": species}
     return render(request, 'dataManager/recordEdit.html', context)
 
 def RecordDelete(request, id):
@@ -1431,8 +1482,8 @@ def MemberDelete(request, id):
     if param:
         param = param[:-1]
 
-    if member.surname == "anon":
-        messages.add_message(request, messages.ERROR, "anon can't be deleted")
+    if member.initials == ANON_INITIALS:
+        messages.add_message(request, messages.ERROR, "Anonymous can't be deleted")
         return redirect(f"/member/{id}?{param}")
     
     if member.profile != None:
@@ -1440,7 +1491,7 @@ def MemberDelete(request, id):
         return redirect(f"/member/{id}?{param}")
     
     if request.method == "POST":
-        replacement_member = Member.objects.get(surname="anon")
+        replacement_member = Member.objects.get(initials=ANON_INITIALS)
 
         for site in Site.objects.filter(creatorFK=member):
             site.creatorFK = replacement_member
@@ -1865,15 +1916,17 @@ def ExportReport(request):
                     s["total"] += 1
                     break
 
-        mem = f"{rec.collectorFK.initials}= {rec.collectorFK.firstname} {rec.collectorFK.surname}"
-        if not mem in members:
-            members.append(mem)
+        if rec.collectorFK.initials != ANON_INITIALS:
+            mem = f"{rec.collectorFK.initials}= {rec.collectorFK.firstname} {rec.collectorFK.surname}"
+            if not mem in members:
+                members.append(mem)
 
-        mem = f"{rec.identifierFK.initials}= {rec.identifierFK.firstname} {rec.identifierFK.surname}"
-        if not mem in members:
-            members.append(mem)
+        if rec.identifierFK.initials != ANON_INITIALS:
+            mem = f"{rec.identifierFK.initials}= {rec.identifierFK.firstname} {rec.identifierFK.surname}"
+            if not mem in members:
+                members.append(mem)
 
-        if rec.confirmerFK != None:
+        if rec.confirmerFK != None and rec.confirmerFK.initials != ANON_INITIALS:
             mem = f"{rec.confirmerFK.initials}= {rec.confirmerFK.firstname} {rec.confirmerFK.surname}"
             if not mem in members:
                 members.append(mem)
@@ -1890,9 +1943,9 @@ def ExportReport(request):
             sortedRecords.append(o)
 
     text = ""
-    for mem in members:
-        text = text + mem + "   " # OLD: ",&nbsp;&nbsp;&nbsp;"
-    text = text[:-19]
+    for mem in sorted(members):
+        text = text + mem + "   "
+    text = text[:-3]
 
     date = datetime.datetime.strptime(date, "%Y-%m-%d").strftime("%d/%m/%Y")
 

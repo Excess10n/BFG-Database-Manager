@@ -30,6 +30,20 @@ def get_fungi_groups():
 def get_fungi_taxonGroups():
     return tuple(Fungi.objects.values_list("taxonGroup", flat=True).distinct())
 
+def get_forays():
+    forays = [("", "------")]
+    records = (
+        Record.objects.order_by("-dateFound")
+        .values_list("dateFound", "siteFK_id", "siteFK__name")
+        .distinct()[:49]
+    )
+    for date_found, site_id, site_name in records:
+        date_str = date_found.strftime("%Y-%m-%d")
+        date_dis = date_found.strftime("%d/%m/%Y")
+        forays.append((f"{date_str},{site_id}", f"{date_dis} at {site_name}"))
+    return forays
+    
+
 class ListTextWidget(forms.TextInput):
 
     def __init__(self, dataset, name, *args, **kwargs):
@@ -287,9 +301,14 @@ class RecordFormBrowse(forms.ModelForm):
         }
 
 class RecordInitialForm(forms.Form):
-    date = forms.DateField(label="Date of record", widget=forms.TextInput(attrs={'type': 'date'}))
-    site = forms.CharField(label="Recorded at", max_length=64, widget=ListTextWidget(dataset=get_site_names, name="siteList"))
-    rec = forms.CharField(label="Recorded by", max_length=128, widget=ListTextWidget(dataset=get_member_names, name="memberList"))
+    date = forms.DateField(label="Date of record", widget=forms.TextInput(attrs={'type': 'date'}), required=True)
+    site = forms.CharField(label="Recorded at", max_length=64, widget=ListTextWidget(dataset=get_site_names, name="siteList"), required=True)
+    rec = forms.CharField(label="Recorded by", max_length=128, widget=ListTextWidget(dataset=get_member_names, name="memberList"), required=True)
+    coll = forms.CharField(label="Default collector", max_length=128, widget=ListTextWidget(dataset=get_member_names, name="memberList"), required=False)
+    ident = forms.CharField(label="Default identifier", max_length=128, widget=ListTextWidget(dataset=get_member_names, name="memberList"), required=False)
+
+class RecordForayForm(forms.Form):
+    forays = forms.ChoiceField(label="Select an existing foray", choices=get_forays, required=True)
 
 
 class RecordFilterForm(forms.Form):

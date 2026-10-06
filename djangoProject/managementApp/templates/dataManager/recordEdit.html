@@ -33,6 +33,14 @@
             <input type="submit" value="Submit" class="btn btn-primary">
         </form>
     </div>
+    <div class="col-1"></div>
+    <div class="col-5">
+        <form method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+            {{forayForm|crispy}}
+            <input type="submit" value="Submit" class="btn btn-primary">
+        </form>
+    </div>
 </div>
 </div>
 <br/><br/>
