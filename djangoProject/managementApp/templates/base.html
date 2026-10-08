@@ -74,7 +74,10 @@
         const scrollToTopBtn = document.getElementById('scrollToTopBtn');
 
         const toggleScrollToTopButton = () => {
-            if (window.scrollY > 200) {
+            const targetY = window.location.pathname.startsWith('/record/browse/')
+                ? 500  // target scroll position for recordBrowse.html specifically
+                : 200;   // target for other pages
+            if (window.scrollY > targetY) {
                 scrollToTopBtn.style.display = 'inline-flex';
                 scrollToTopBtn.style.alignItems = 'center';
                 scrollToTopBtn.style.justifyContent = 'center';
@@ -84,7 +87,11 @@
         };
 
         scrollToTopBtn.addEventListener('click', () => {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            const targetY = window.location.pathname.startsWith('/record/browse/')
+                ? 450  // target scroll position for recordBrowse.html specifically
+                : 0;   // target for other pages
+
+            window.scrollTo({ top: targetY, behavior: 'smooth' });
         });
 
         window.addEventListener('scroll', toggleScrollToTopButton);

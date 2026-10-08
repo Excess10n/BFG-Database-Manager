@@ -61,7 +61,7 @@
 {% for member in members %}
     <div class="row border-bottom border-dark">
         <div class="col-2">{{member.surname}}</div>
-        <div class="col-2">{{member.firstname}}</div>
+        <div class="col-2">{{member.firstname|default_if_none:""}}</div>
         <div class="col-1">{{member.initials}}</div>
         <div class="col-1">{{member.total}}</div>
         <div class="col-1 mt-1">

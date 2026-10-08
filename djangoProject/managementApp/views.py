@@ -8,13 +8,15 @@ from django.template.loader import render_to_string
 from .forms import AssocForm, SubtrForm, SiteForm, SiteSearchForm, RecordOrderForm, RecordFilterForm, RecordForm, RecordFormBrowse, RecordInitialForm, RecordForayForm, MemberForm, MemberSearchForm, MemberLoginForm, ReportExportForm, FRDBIExportForm, FungiForm, FungiSearchForm
 from .models import Association, Substrate, Site, Record, RecordArchive, Fungi, FungiCurrent, FungiArchive, Member, MemberLogin
 from django.contrib.auth.models import User, Permission
-from .viewFunctions import getFungiObjects, createNewCurrentFungi, databaseBackupOverwrite, databaseBackupOverwriteBuffered, databaseBackupRecordAppend
+from .viewFunctions import getFungiObjects, searchFungiObjects, createNewCurrentFungi, databaseBackupOverwrite, databaseBackupOverwriteBuffered, databaseBackupRecordAppend
 import datetime
 import io
 import itertools
 import os
 import logging
 import zipfile
+
+import time
 
 # import pypandoc (now unused)
 
@@ -37,14 +39,15 @@ def checkPerms(user, admin=False):
 # function for pagination calculations
 # takes the current page of the user, the total number of items to be displayed, and the max number of items to be displayed on 1 page
 # returns current page, the number of pages, the index of the first and last item to be displayed, the total items displayed, and page number options to be displayed to the user
+# a list of the boundaries of each page is also returned for usage in page labeling in record browser
 def pagination(current, total, max=50):
     if current == None:
         current = 1
     current = int(current)
 
     pageCount = (total // max) + 1
-    start = current - 4
-    end = current + 4
+    start = current - 9
+    end = current + 9
     if start < 1:
         diff = 1 - start
     elif end > pageCount:
@@ -57,10 +60,18 @@ def pagination(current, total, max=50):
         end = pageCount
     pageList = range(start, end + 1)
 
+    boundaryList = []
+    for page in pageList:
+        front = (page-1)*max
+        back = page*max
+        if back > total:
+            back = total
+        boundaryList.append([front,back])
+
     if current*max > total:
-        return current, pageCount, (current-1)*max, total, pageList
+        return current, pageCount, (current-1)*max, total, pageList, boundaryList
     
-    return current, pageCount, (current-1)*max, current*max, pageList
+    return current, pageCount, (current-1)*max, current*max, pageList, boundaryList
 
 
 # function for alphabetical pagination
@@ -547,7 +558,7 @@ def RecordEditView(request):
             formList.append(dic)
 
     # pagination
-    currentPage, pageCount, start, end, pageList = pagination(currentPage, records.count(), 15)
+    currentPage, pageCount, start, end, pageList, _ = pagination(currentPage, records.count(), 15)
     formList = formList[start:end]
 
     page = {"current": currentPage, "first": currentPage == 1, "last": currentPage == pageCount, "pageCount": pageCount, "list": pageList}
@@ -662,10 +673,11 @@ def RecordBrowseView(request):
         month = None
 
         if data["fungus"] != "" and data["fungus"] != None:
-            fungus, _, _ = getFungiObjects(data["fungus"])
-            if fungus == None:
-                messages.add_message(request, messages.ERROR, f"Fungus \"{data['fungus']}\" not found")
-                redirect(RecordBrowseView)
+            #fungus, _, _ = getFungiObjects(data["fungus"])
+            #if fungus == None:
+            #    messages.add_message(request, messages.ERROR, f"Fungus \"{data['fungus']}\" not found")
+            #    redirect(RecordBrowseView)
+            fungus = searchFungiObjects(data["fungus"])
             param += f"fungus={data['fungus']}&"
 
         if data["site"] != "" and data["site"] != None:
@@ -744,7 +756,7 @@ def RecordBrowseView(request):
         if param != "":
             param = param[:-1]
 
-        records = Record.objects.all().order_by("-dateFound", "fungusFK__currentFungus__fullName")
+        records = Record.objects.all().order_by("fungusFK__currentFungus__fullName", "-dateFound")
 
         # substrate and assoc filters
         if substrate != None:
@@ -756,7 +768,7 @@ def RecordBrowseView(request):
                 | Q(assoc3__icontains=association)
             )
         if fungus != None:
-            records = records.filter(fungusFK=fungus)
+            records = records.filter(fungusFK__in=fungus)
         if site != None:
             records = records.filter(siteFK=site)
         if vc != None:
@@ -833,18 +845,46 @@ def RecordBrowseView(request):
     
     else:
         # if no filter get all records
-        records = Record.objects.all().order_by("-dateFound", "fungusFK__currentFungus__fullName")
+        records = Record.objects.all().order_by("fungusFK__currentFungus__fullName", "-dateFound")
         length = records.count()
 
     # get species count
     species = records.values_list("fungusFK_id", flat=True).distinct().count()
     
     # pagination
-    
-    currentPage, pageCount, start, end, pageList = pagination(currentPage, length)
+    currentPage, pageCount, start, end, pageList, bounds = pagination(currentPage, length)
+
+    # add labels to the options displayed (AI GEN used for efficinecy improvement)
+    pageLabels = []
+    previous = ""
+    if bounds and bounds[0][1] > 0:
+        firstLabelIndex = bounds[0][1] - 1
+        labelNames = list(
+            records.values_list("fungusFK__currentFungus__fullName", flat=True)[
+                firstLabelIndex:bounds[-1][1]
+            ]
+        )
+    else:
+        firstLabelIndex = 0
+        labelNames = []
+
+    for i in range(len(pageList)): 
+        labelIndex = bounds[i][1] - 1 - firstLabelIndex
+        if labelIndex < 0 or labelIndex >= len(labelNames):
+            pageLabels.append({"num": pageList[i], "label": f"{pageList[i]}"})
+            continue
+
+        last = labelNames[labelIndex][0]
+        
+        if previous != last:
+            pageLabels.append({"num": pageList[i], "label": f"({last.upper()}){pageList[i]}"})
+            previous = last.upper()
+        else:
+            pageLabels.append({"num": pageList[i], "label": f"{pageList[i]}"})
+            
     records = records[start:end]
 
-    page = {"current": currentPage, "first": currentPage == 1, "last": currentPage == pageCount, "pageCount": pageCount, "list": pageList}
+    page = {"current": currentPage, "first": currentPage == 1, "last": currentPage == pageCount, "pageCount": pageCount, "list": pageLabels}
 
     # get record to expand if any
     expand = request.GET.get("expand")

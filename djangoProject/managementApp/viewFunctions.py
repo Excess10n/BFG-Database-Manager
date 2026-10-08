@@ -13,6 +13,11 @@ def getFungiObjects(name): # returns (currentFungi, parent, array of children)
         return current.first(), fungus, children
     return fungus.currentName, fungus.currentName.currentFungus, [fungus]
 
+def searchFungiObjects(query): # returns array of currentFungi objects
+    fungi = Fungi.objects.filter(fullName__icontains=query, currentName=None)
+    currents = FungiCurrent.objects.filter(currentFungus__in=fungi)
+    return currents
+
 def createNewCurrentFungi(id):
     curr = FungiCurrent(currentFungus=Fungi.objects.get(id=id))
     curr.save()
