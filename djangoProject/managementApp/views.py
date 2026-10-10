@@ -46,8 +46,8 @@ def pagination(current, total, max=50):
     current = int(current)
 
     pageCount = (total // max) + 1
-    start = current - 9
-    end = current + 9
+    start = current - 7
+    end = current + 7
     if start < 1:
         diff = 1 - start
     elif end > pageCount:
@@ -80,7 +80,7 @@ def pagination(current, total, max=50):
 # the name of the field to filter on must also be included
 
 PAGINATION_CHARS = ["0","A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"]
-def alphaPagination(currentPage, objects, field):
+def alphaPagination(currentPage, objects, field, formList=False):
     # default to A
     if currentPage == None or not currentPage in PAGINATION_CHARS:
         currentPage = "A"
@@ -91,7 +91,12 @@ def alphaPagination(currentPage, objects, field):
     # get all the letters to include
     pageList = []
     for char in PAGINATION_CHARS:
-        if char == "0":
+        if formList: # this operates differently when working with a form list
+            for obj in objects:
+                if obj[field][0].upper() == char:
+                    pageList.append(char)
+                    break
+        elif char == "0":
             if objects.filter(**regex_kwargs).exists():
                 pageList.append(char)
         else:
@@ -109,7 +114,14 @@ def alphaPagination(currentPage, objects, field):
                 index = 0
 
     # filter the objects
-    if currentPage == "0":
+    if formList: # this operates differently when working with a form list
+        temp = []
+        for obj in objects:
+            if obj[field][0].upper() == currentPage:
+                temp.append(obj)
+        objects = temp
+        print(objects)
+    elif currentPage == "0":
         objects = objects.filter(**regex_kwargs)
     else:
         starts_kwargs = {field + "__istartswith": currentPage}
@@ -225,6 +237,15 @@ def manageForm(form, new, edit, request):
                 messages.add_message(request, messages.ERROR, "Recorder hasn't been entered")
                 return False
 
+            # if record is new check for optional default coll and ident
+            coll_id = request.GET.get("coll")
+            if coll_id is not None and not data["collectorFK"]:
+                data["collectorFK"] = Member.objects.get(id=coll_id).fullName
+
+            ident_id = request.GET.get("ident")
+            if ident_id is not None and not data["identifierFK"]:
+                data["identifierFK"] = Member.objects.get(id=ident_id).fullName
+
         date_value = request.GET.get("date")
         if date_value is not None:
             inst.dateFound = datetime.datetime.strptime(date_value, "%Y-%m-%d").date()
@@ -267,11 +288,16 @@ def manageForm(form, new, edit, request):
     except:
         messages.add_message(request, messages.ERROR, f"Fungus \"{data['fungus']}\" not found")
         return False
-
-    identifier = get_member(data["identifierFK"], data["identifierFK"])
-    if identifier is None:
+    
+    if data["identifierFK"]:
+        identifier = get_member(data["identifierFK"], data["identifierFK"])
+        if identifier is None:
+            return False
+        inst.identifierFK = identifier
+    else:
+        messages.add_message(request, messages.ERROR, "No Identifier selected")
         return False
-    inst.identifierFK = identifier
+    
 
     confirmer = None
     if data["confirmerFK"]:
@@ -280,10 +306,14 @@ def manageForm(form, new, edit, request):
             return False
     inst.confirmerFK = confirmer
 
-    collector = get_member(data["collectorFK"], data["collectorFK"])
-    if collector is None:
+    if data["collectorFK"]:
+        collector = get_member(data["collectorFK"], data["collectorFK"])
+        if collector is None:
+            return False
+        inst.collectorFK = collector
+    else:
+        messages.add_message(request, messages.ERROR, "No Collector selected")
         return False
-    inst.collectorFK = collector
 
     photographer = None
     if data["photographerFK"]:
@@ -347,7 +377,7 @@ def RecordEditView(request):
     # get page
     currentPage = request.GET.get("page")
     if currentPage == None or currentPage == "None":
-        currentPage = 1
+        currentPage = "1"
 
     # foray selector
     foray_form_post = (
@@ -384,9 +414,7 @@ def RecordEditView(request):
         data = {
             "date": request.GET.get('date'),
             "site": request.GET.get('site'),
-            "rec": request.GET.get('rec'),
-            "coll": None,
-            "ident": None
+            "rec": request.GET.get('rec')
         }
         init = {
             "date": request.GET.get('date'),
@@ -396,11 +424,9 @@ def RecordEditView(request):
         if request.GET.get("coll") != None:
             param += f"&coll={request.GET.get('coll')}"
             init["coll"] = Member.objects.get(id=request.GET.get('coll'))
-            data["coll"] = init["coll"].fullName
         if request.GET.get("ident") != None:
             param += f"&ident={request.GET.get('ident')}"
             init["ident"] = Member.objects.get(id=request.GET.get('ident'))
-            data["ident"] = init["ident"].fullName
         
         try:
             # its either initilized with the params or not
@@ -476,7 +502,7 @@ def RecordEditView(request):
 
     if request.method == "POST" and submitted_prefix:
         if submitted_prefix == "form0":
-            newForm = RecordForm("New", request.POST if submitted_prefix == "form0" else None, request.FILES or None, prefix="form0")
+            newForm = RecordForm("Save", request.POST if submitted_prefix == "form0" else None, request.FILES or None, prefix="form0")
             if newForm.is_valid():
                 done = manageForm(newForm, True, False, request)
                 if done:
@@ -557,17 +583,23 @@ def RecordEditView(request):
         else:
             formList.append(dic)
 
-    # pagination
-    currentPage, pageCount, start, end, pageList, _ = pagination(currentPage, records.count(), 15)
-    formList = formList[start:end]
+    # pagination (alpha if order is 2)
+    if order == "1":
+        if not currentPage.isnumeric():
+            currentPage = "1"
+        currentPage, pageCount, start, end, pageList, _ = pagination(currentPage, records.count(), 15)
+        formList = formList[start:end]
+        page = {"isNum": True, "current": currentPage, "first": currentPage == 1, "last": currentPage == pageCount, "pageCount": pageCount, "list": pageList}
 
-    page = {"current": currentPage, "first": currentPage == 1, "last": currentPage == pageCount, "pageCount": pageCount, "list": pageList}
-
-    # new form, also check if there is a default coll or ident
-    if data == {}:
-        newForm = RecordForm("New", request.POST if submitted_prefix == "form0" else None, request.FILES or None, prefix="form0")
     else:
-        newForm = RecordForm("New", request.POST if submitted_prefix == "form0" else None, request.FILES or None, prefix="form0", initial={"collectorFK": data["coll"],"identifierFK": data["ident"]})
+        if currentPage.isnumeric():
+            currentPage = "A"
+        currentPage, pageList, formList = alphaPagination(currentPage, formList, "name", True)
+        page = {"isNum": False, "current": currentPage, "list": pageList}
+        
+
+    # new form
+    newForm = RecordForm("Save", request.POST if submitted_prefix == "form0" else None, request.FILES or None, prefix="form0")
 
     # get species count
     species = records.values_list("fungusFK_id", flat=True).distinct().count()
@@ -856,9 +888,8 @@ def RecordBrowseView(request):
 
     # add labels to the options displayed (AI GEN used for efficinecy improvement)
     pageLabels = []
-    previous = ""
     if bounds and bounds[0][1] > 0:
-        firstLabelIndex = bounds[0][1] - 1
+        firstLabelIndex = bounds[0][0]
         labelNames = list(
             records.values_list("fungusFK__currentFungus__fullName", flat=True)[
                 firstLabelIndex:bounds[-1][1]
@@ -868,19 +899,20 @@ def RecordBrowseView(request):
         firstLabelIndex = 0
         labelNames = []
 
-    for i in range(len(pageList)): 
-        labelIndex = bounds[i][1] - 1 - firstLabelIndex
-        if labelIndex < 0 or labelIndex >= len(labelNames):
+    for i in range(len(pageList)):
+        firstIndex = bounds[i][0] - firstLabelIndex
+        lastIndex = bounds[i][1] - firstLabelIndex - 1
+        if lastIndex < 0 or lastIndex >= len(labelNames):
             pageLabels.append({"num": pageList[i], "label": f"{pageList[i]}"})
             continue
 
-        last = labelNames[labelIndex][0]
+        first = labelNames[firstIndex][0].upper()
+        last = labelNames[lastIndex][0].upper()
         
-        if previous != last:
-            pageLabels.append({"num": pageList[i], "label": f"({last.upper()}){pageList[i]}"})
-            previous = last.upper()
+        if first == last:
+            pageLabels.append({"num": pageList[i], "label": f"({first}) {pageList[i]}"})
         else:
-            pageLabels.append({"num": pageList[i], "label": f"{pageList[i]}"})
+            pageLabels.append({"num": pageList[i], "label": f"({first}-{last}) {pageList[i]}"})
             
     records = records[start:end]
 

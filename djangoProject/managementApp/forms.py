@@ -148,8 +148,8 @@ class RecordForm(forms.ModelForm):
         })
     
     fungus = forms.CharField(label="Fungus", max_length=64, required=True, widget=forms.TextInput(attrs={"list": "fungusList", "autocomplete": "off"}))
-    collectorFK = forms.CharField(label="Collector", max_length=128, required=True, widget=ListTextWidget(dataset=get_member_names, name="collectorList"))
-    identifierFK = forms.CharField(label="Identifier", max_length=128, required=True, widget=ListTextWidget(dataset=get_member_names, name="identifierList"))
+    collectorFK = forms.CharField(label="Collector*", max_length=128, required=False, widget=ListTextWidget(dataset=get_member_names, name="collectorList"))
+    identifierFK = forms.CharField(label="Identifier*", max_length=128, required=False, widget=ListTextWidget(dataset=get_member_names, name="identifierList"))
     confirmerFK = forms.CharField(label="Confirmer", max_length=128, required=False, widget=ListTextWidget(dataset=get_member_names, name="confirmerList"))
     photographerFK = forms.CharField(label="Photographer", max_length=128, required=False, widget=ListTextWidget(dataset=get_member_names, name="photographerList"))
 
@@ -301,6 +301,30 @@ class RecordFormBrowse(forms.ModelForm):
         }
 
 class RecordInitialForm(forms.Form):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.layout = Layout(
+            Div(
+                Div('date', css_class="col"),
+                Div('coll', css_class="col"),
+                css_class='row',
+            ),
+            Div(
+                Div('site', css_class="col"),
+                Div('ident', css_class="col"),
+                css_class='row',
+            ),
+            Div(
+                Div('rec', css_class="col"),
+                Div(bootstrap.FormActions(
+                    Submit('submit', 'Submit', css_class='btn btn-primary')),
+                    css_class='col'
+                    ),
+                css_class='row',
+            )
+        )
+
     date = forms.DateField(label="Date of record", widget=forms.TextInput(attrs={'type': 'date'}), required=True)
     site = forms.CharField(label="Recorded at", max_length=64, widget=ListTextWidget(dataset=get_site_names, name="siteList"), required=True)
     rec = forms.CharField(label="Recorded by", max_length=128, widget=ListTextWidget(dataset=get_member_names, name="memberList"), required=True)
@@ -335,6 +359,7 @@ class RecordFilterForm(forms.Form):
                 Div(css_class="col-7"),
                 Div('month', css_class="col-1"),
                 Div('dateSingle', css_class="col-2"),
+                Div(HTML('<a href="/record/browse" class="button-class"><button type="button" class="btn btn-danger">Clear</button></a>'), css_class='col'),
                 css_class='row',
             )
         )
@@ -362,9 +387,22 @@ class RecordFilterForm(forms.Form):
 
 
 class RecordOrderForm(forms.Form):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.layout = Layout(
+            Div(
+                Div('order', css_class="col-auto"),
+                Div(bootstrap.FormActions(
+                    Submit('submit', 'Change', css_class='btn btn-primary')),
+                    css_class='col'
+                    ),
+                css_class='row',
+            )
+        )
     CHOICES = [
-        ('1', 'Time'),
-        ('2', 'Name'),
+        ('1', 'Off'),
+        ('2', 'On'),
     ]
     order = forms.ChoiceField(
         label= "",

@@ -20,20 +20,13 @@
         <a href="/" class="button-class"><button type="button" class="btn btn-dark">Back</button></a>
     </div>
 </div>
-{% if messages and not last %}
-    {% for message in messages %}
-        <div class="container alert {{message.tags}}">{{message}}</div>
-    {% endfor %}
-{% endif %}
 <div class="row">
-    <div class="col-3">
+    <div class="col-6 border border-dark">
         <form method="POST" enctype="multipart/form-data">
             {% csrf_token %}
-            {{initForm|crispy}}
-            <input type="submit" value="Submit" class="btn btn-primary">
+            {% crispy initForm %}
         </form>
     </div>
-    <div class="col-1"></div>
     <div class="col-5">
         <form method="POST" enctype="multipart/form-data">
             {% csrf_token %}
@@ -41,25 +34,69 @@
             <input type="submit" value="Submit" class="btn btn-primary">
         </form>
         {% if initPresent %}
-            <br/><br/><br/><br/>
-            <h4>Order</h4>
+            <br/>
+            <h4>A-Z order</h4>
             <form method="POST" enctype="multipart/form-data">
                 {% csrf_token %}
-                {{orderForm|crispy}}
-                <input type="submit" value="Change" class="btn btn-primary">
+                {% crispy orderForm %}
             </form>
         {% endif %}
     </div>
 </div>
 </div>
-<br/><br/>
+<br/>
+<nav aria-label="...">
+    <ul class="pagination">
+    {% if page.isNum %}
+        {% if page.first %}
+            <li class="page-item disabled">
+                <a class="page-link" href="#" tabindex="-1" aria-disabled="true">First</a>
+            </li>
+        {% else %}
+            <li class="page-item">
+                <a class="page-link" href="/record/edit?page=1&delete={{deleteText}}&{{param}}">First</a>
+            </li>
+        {% endif %}
+        {% for x in page.list %}
+            {% if x == page.current %}
+                <li class="page-item active" aria-current="page">
+                    <a class="page-link" href="/record/edit?page={{x}}&delete={{deleteText}}&{{param}}">{{x}}</a>
+                </li>
+            {% else %}
+                <li class="page-item"><a class="page-link" href="/record/edit?page={{x}}&delete={{deleteText}}&{{param}}">{{x}}</a></li>
+            {% endif %}
+        {% endfor %}
+        {% if page.last %}
+            <li class="page-item disabled">
+                <a class="page-link" href="#" tabindex="-1" aria-disabled="true">Last</a>
+            </li>
+        {% else %}
+            <li class="page-item">
+                <a class="page-link" href="/record/edit?page={{page.pageCount}}&delete={{deleteText}}&{{param}}">Last</a>
+            </li>
+        {% endif %}
+    {% else %}
+        {% for x in page.list %}
+            {% if x == page.current %}
+                <li class="page-item active" aria-current="page">
+                    <a class="page-link" href="/record/edit?page={{x}}&delete={{deleteText}}&{{param}}">{{x}}</a>
+                </li>
+            {% else %}
+                <li class="page-item"><a class="page-link" href="/record/edit?page={{x}}&delete={{deleteText}}&{{param}}">{{x}}</a></li>
+            {% endif %}
+        {% endfor %}
+    {% endif %}
+    </ul>
+</nav>
+<br/>
+{% if messages and not last %}
+    {% for message in messages %}
+        <div class="container alert {{message.tags}}">{{message}}</div>
+    {% endfor %}
+{% endif %}
 {% if initPresent %}
 <div class="container">
     <div class="row border-bottom border-dark">
-        {% if dupNum == "new" %}
-            <div class="container alert danger">This fungus has already been entered for this site and date,
-            press new again to confirm</div>
-        {% endif %}
         <div class="col">
             {% if last == 'new' and messages %}
                 {% for message in messages %}
@@ -106,36 +143,106 @@
 <br/>
 <nav aria-label="...">
     <ul class="pagination">
-    {% if page.first %}
-        <li class="page-item disabled">
-            <a class="page-link" href="#" tabindex="-1" aria-disabled="true">First</a>
-        </li>
-    {% else %}
-        <li class="page-item">
-            <a class="page-link" href="/record/edit?page=1&delete={{deleteText}}&{{param}}">First</a>
-        </li>
-    {% endif %}
-    {% for x in page.list %}
-        {% if x == page.current %}
-            <li class="page-item active" aria-current="page">
-                <a class="page-link" href="/record/edit?page={{x}}&delete={{deleteText}}&{{param}}">{{x}}</a>
+    {% if page.isNum %}
+        {% if page.first %}
+            <li class="page-item disabled">
+                <a class="page-link" href="#" tabindex="-1" aria-disabled="true">First</a>
             </li>
         {% else %}
-            <li class="page-item"><a class="page-link" href="/record/edit?page={{x}}&delete={{deleteText}}&{{param}}">{{x}}</a></li>
+            <li class="page-item">
+                <a class="page-link" href="/record/edit?page=1&delete={{deleteText}}&{{param}}">First</a>
+            </li>
         {% endif %}
-    {% endfor %}
-    {% if page.last %}
-        <li class="page-item disabled">
-            <a class="page-link" href="#" tabindex="-1" aria-disabled="true">Last</a>
-        </li>
+        {% for x in page.list %}
+            {% if x == page.current %}
+                <li class="page-item active" aria-current="page">
+                    <a class="page-link" href="/record/edit?page={{x}}&delete={{deleteText}}&{{param}}">{{x}}</a>
+                </li>
+            {% else %}
+                <li class="page-item"><a class="page-link" href="/record/edit?page={{x}}&delete={{deleteText}}&{{param}}">{{x}}</a></li>
+            {% endif %}
+        {% endfor %}
+        {% if page.last %}
+            <li class="page-item disabled">
+                <a class="page-link" href="#" tabindex="-1" aria-disabled="true">Last</a>
+            </li>
+        {% else %}
+            <li class="page-item">
+                <a class="page-link" href="/record/edit?page={{page.pageCount}}&delete={{deleteText}}&{{param}}">Last</a>
+            </li>
+        {% endif %}
     {% else %}
-        <li class="page-item">
-            <a class="page-link" href="/record/edit?page={{page.pageCount}}&delete={{deleteText}}&{{param}}">Last</a>
-        </li>
+        {% for x in page.list %}
+            {% if x == page.current %}
+                <li class="page-item active" aria-current="page">
+                    <a class="page-link" href="/record/edit?page={{x}}&delete={{deleteText}}&{{param}}">{{x}}</a>
+                </li>
+            {% else %}
+                <li class="page-item"><a class="page-link" href="/record/edit?page={{x}}&delete={{deleteText}}&{{param}}">{{x}}</a></li>
+            {% endif %}
+        {% endfor %}
     {% endif %}
     </ul>
 </nav>
 {% endif %}
+
+<script>
+    // AI GEN: create a pop up if the user attempts to leave the page with unsaved changes
+    (() => {
+        const recordForms = Array.from(document.forms).filter((form) =>
+            Array.from(form.elements).some((field) =>
+                field.name && /^form\d+-/.test(field.name)
+            )
+        );
+        const initialValues = new Map();
+        let recordFormSubmitted = false;
+
+        const getValue = (field) => {
+            if (field.type === "checkbox" || field.type === "radio") {
+                return field.checked;
+            }
+            if (field.type === "file") {
+                return Array.from(field.files, (file) => file.name);
+            }
+            if (field instanceof HTMLSelectElement && field.multiple) {
+                return Array.from(field.selectedOptions, (option) => option.value);
+            }
+            return field.value;
+        };
+
+        const editableFields = recordForms.flatMap((form) =>
+            Array.from(form.elements).filter((field) =>
+                field.name &&
+                /^form\d+-/.test(field.name) &&
+                !field.disabled &&
+                !["button", "hidden", "image", "reset", "submit"].includes(field.type)
+            )
+        );
+
+        editableFields.forEach((field) => initialValues.set(field, JSON.stringify(getValue(field))));
+
+        recordForms.forEach((form) => {
+            form.addEventListener("submit", () => {
+                recordFormSubmitted = true;
+            });
+        });
+
+        window.addEventListener("beforeunload", (event) => {
+            if (recordFormSubmitted) {
+                return;
+            }
+
+            const hasUnsavedChanges = editableFields.some(
+                (field) => JSON.stringify(getValue(field)) !== initialValues.get(field)
+            );
+
+            if (hasUnsavedChanges) {
+                event.preventDefault();
+                event.returnValue = "";
+            }
+        });
+    })();
+</script>
 
 {% include "scripts/fungiSuggestions.html" %}
 
