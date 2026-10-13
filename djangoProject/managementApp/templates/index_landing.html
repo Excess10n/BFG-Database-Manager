@@ -36,26 +36,29 @@
     }
 
     .landing-page h1 {
+        font-family: "Century Gothic", CenturyGothic, AppleGothic, sans-serif;
         color: rgba(254, 206, 47, 1);
         border-radius: 10px;
         padding: 0.75rem 1rem;
         display: inline-block;
         width: auto;
         max-width: 100%;
-        font-size: 140px;
+        font-size: 128px;
     }
 
     .landing-page h2 {
+        font-family: "Century Gothic", CenturyGothic, AppleGothic, sans-serif;
         color: rgba(255, 255, 255, 1);
         border-radius: 10px;
         padding: 0.75rem 1rem;
         display: inline-block;
         width: auto;
         max-width: 100%;
-        font-size: 30px;
+        font-size: 37.3px;
     }
 
     .landing-page h3 {
+        font-family: "Calibri";
         color: rgba(254, 206, 47, 1);
         border-radius: 10px;
         padding: 0.75rem 1rem;
@@ -63,17 +66,36 @@
         display: inline-block;
         width: auto;
         max-width: 100%;
-        font-size: 20px;
+        font-size: 24px;
     }
 
-    .landing-page .btn {
-        margin-right: 80px;
-        background-color: rgba(254, 206, 47, 1);
+    .landing-actions img {
+        display: block;
+        width: 250px;
         max-width: 100%;
-        font-size: 30px;
-        border-radius: 20px;
-        border: none;
-        padding: 0.75rem 2.5rem;
+        height: auto;
+        transition: filter 150ms ease-in-out;
+    }
+
+    .landing-actions a:hover img {
+        filter: brightness(0.85);
+    }
+
+    .landing-actions {
+        position: fixed;
+        right: 6rem;
+        bottom: 3rem;
+        z-index: 10;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 0.5rem;
+        max-width: calc(100vw - 2rem);
+    }
+
+    .landing-actions h3 {
+        margin: 0;
+        text-align: right;
     }
 </style>
 
@@ -89,12 +111,10 @@
         <h2><b>Fungal Records Database for Buckinghamshire Fungus Group</b></h2>
     </div>
     </div>
-    <br/><br/><br/><br/><br/><br/><br/><br/>
-    <div class="d-flex justify-content-end">
-        <a href="/auth/login/" class="button-class"><button class="btn">&nbsp;&nbsp;&nbsp;&nbsp;LOGIN&nbsp;&nbsp;&nbsp;&nbsp;</button></a>
-    </div>
-    <br/><br/>
-    <div class="d-flex justify-content-end">
+    <div class="landing-actions">
+        <a href="/auth/login/" class="button-class">
+            <img src="/media/login-button-image.png" alt="Login">
+        </a>
         <h3><b><i>&#169; Bucks Fungus Group 2026 | FRDBFG website created and maintained by Jonathan Peace</i></b></h3>
     </div>
 </div>

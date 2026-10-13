@@ -356,7 +356,8 @@ class RecordFilterForm(forms.Form):
                     css_class='col'
                     ),
                 Div('vc', css_class="col-1"),
-                Div(css_class="col-7"),
+                Div('order', css_class="col-2"),
+                Div(css_class="col-5"),
                 Div('month', css_class="col-1"),
                 Div('dateSingle', css_class="col-2"),
                 Div(HTML('<a href="/record/browse" class="button-class"><button type="button" class="btn btn-danger">Clear</button></a>'), css_class='col'),
@@ -370,6 +371,17 @@ class RecordFilterForm(forms.Form):
     #     for record in records:
     #         fungi.append(record.fungusFK.fullName)
     #     return fungi
+
+    CHOICES = [
+        ('1', 'Off'),
+        ('2', 'On'),
+    ]
+    order = forms.ChoiceField(
+        label= "A-Z order",
+        required=False,
+        widget=forms.RadioSelect,
+        choices=CHOICES,
+    )
 
     fungus = forms.CharField(label="Fungus", max_length=64, required=False, widget=forms.TextInput(attrs={"list": "fungusList", "autocomplete": "off"}))
     site = forms.CharField(label="Site", max_length=64, required=False, widget=ListTextWidget(dataset=get_site_names, name="siteList"))

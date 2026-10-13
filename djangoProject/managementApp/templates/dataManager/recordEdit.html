@@ -27,12 +27,15 @@
             {% crispy initForm %}
         </form>
     </div>
-    <div class="col-5">
+    <div class="col-5 border-top border-end border-bottom border-dark">
+        <div class="border-bottom border-dark">
         <form method="POST" enctype="multipart/form-data">
             {% csrf_token %}
             {{forayForm|crispy}}
             <input type="submit" value="Submit" class="btn btn-primary">
         </form>
+        <br/>
+        </div>
         {% if initPresent %}
             <br/>
             <h4>A-Z order</h4>

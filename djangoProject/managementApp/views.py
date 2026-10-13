@@ -672,12 +672,17 @@ def RecordBrowseView(request):
         data["dateSingle"] = None
 
     currentPage = request.GET.get("page")
+    order = request.GET.get("order")
+    if order == None:
+        order = "1"
 
     filt = False
     for x in data.values():
         if x != None:
             filt = True
             break
+
+    data["order"] = order
     
     form = RecordFilterForm("Filter", request.POST or None, initial=data, prefix="filterform")
     # if form was submitted then take the data from there instead
@@ -685,6 +690,7 @@ def RecordBrowseView(request):
         data = form.cleaned_data
         filt = True
         currentPage = 1
+        order = data["order"]
     
     # filter process if data is present
     if filt:
@@ -788,7 +794,10 @@ def RecordBrowseView(request):
         if param != "":
             param = param[:-1]
 
-        records = Record.objects.all().order_by("fungusFK__currentFungus__fullName", "-dateFound")
+        if order == "1":
+            records = Record.objects.all().order_by("-dateFound", "fungusFK__currentFungus__fullName")
+        else:
+            records = Record.objects.all().order_by("fungusFK__currentFungus__fullName", "-dateFound")
 
         # substrate and assoc filters
         if substrate != None:
@@ -877,7 +886,10 @@ def RecordBrowseView(request):
     
     else:
         # if no filter get all records
-        records = Record.objects.all().order_by("fungusFK__currentFungus__fullName", "-dateFound")
+        if order == "1":
+            records = Record.objects.all().order_by("-dateFound", "fungusFK__currentFungus__fullName")
+        else:
+            records = Record.objects.all().order_by("fungusFK__currentFungus__fullName", "-dateFound")
         length = records.count()
 
     # get species count
@@ -886,34 +898,39 @@ def RecordBrowseView(request):
     # pagination
     currentPage, pageCount, start, end, pageList, bounds = pagination(currentPage, length)
 
-    # add labels to the options displayed (AI GEN used for efficinecy improvement)
+    # add labels to the options displayed (order 2 only) (AI GEN used for efficinecy improvement)
     pageLabels = []
-    if bounds and bounds[0][1] > 0:
-        firstLabelIndex = bounds[0][0]
-        labelNames = list(
-            records.values_list("fungusFK__currentFungus__fullName", flat=True)[
-                firstLabelIndex:bounds[-1][1]
-            ]
-        )
-    else:
-        firstLabelIndex = 0
-        labelNames = []
-
-    for i in range(len(pageList)):
-        firstIndex = bounds[i][0] - firstLabelIndex
-        lastIndex = bounds[i][1] - firstLabelIndex - 1
-        if lastIndex < 0 or lastIndex >= len(labelNames):
-            pageLabels.append({"num": pageList[i], "label": f"{pageList[i]}"})
-            continue
-
-        first = labelNames[firstIndex][0].upper()
-        last = labelNames[lastIndex][0].upper()
-        
-        if first == last:
-            pageLabels.append({"num": pageList[i], "label": f"({first}) {pageList[i]}"})
+    if order == "2":
+        if bounds and bounds[0][1] > 0:
+            firstLabelIndex = bounds[0][0]
+            labelNames = list(
+                records.values_list("fungusFK__currentFungus__fullName", flat=True)[
+                    firstLabelIndex:bounds[-1][1]
+                ]
+            )
         else:
-            pageLabels.append({"num": pageList[i], "label": f"({first}-{last}) {pageList[i]}"})
+            firstLabelIndex = 0
+            labelNames = []
+
+        for i in range(len(pageList)):
+            firstIndex = bounds[i][0] - firstLabelIndex
+            lastIndex = bounds[i][1] - firstLabelIndex - 1
+            if lastIndex < 0 or lastIndex >= len(labelNames):
+                pageLabels.append({"num": pageList[i], "label": f"{pageList[i]}"})
+                continue
+
+            first = labelNames[firstIndex][0].upper()
+            last = labelNames[lastIndex][0].upper()
             
+            if first == last:
+                pageLabels.append({"num": pageList[i], "label": f"({first}) {pageList[i]}"})
+            else:
+                pageLabels.append({"num": pageList[i], "label": f"({first}-{last}) {pageList[i]}"})
+    else:
+        # quick conversion from pageList to page pageLabels format
+        for page in pageList:
+            pageLabels.append({"num": page, "label": str(page)})
+
     records = records[start:end]
 
     page = {"current": currentPage, "first": currentPage == 1, "last": currentPage == pageCount, "pageCount": pageCount, "list": pageLabels}
@@ -926,6 +943,8 @@ def RecordBrowseView(request):
         expand = int(expand)
     except:
         expand = -1
+
+    param += f"order={order}&"
 
     context = {"records": records, "param": param, "form": form, "page": page, "expand": expand, "isManager": isManager, "species": species}
     return render(request, 'dataManager/recordBrowse.html', context)

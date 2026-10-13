@@ -99,14 +99,25 @@
 
         // 1. Save the scroll position right before the page reloads
         window.addEventListener("beforeunload", () => {
-            localStorage.setItem("scrollPosition", window.scrollY);
+            const documentHeight = Math.max(
+                document.documentElement.scrollHeight,
+                document.body.scrollHeight
+            );
+            const isScrollable = documentHeight > window.innerHeight + 1;
+            const isAtBottom = window.innerHeight + window.scrollY
+                >= documentHeight - 1;
+            localStorage.setItem("scrollPosition", isScrollable && isAtBottom ? "bottom" : window.scrollY);
         });
 
         // 2. Restore the scroll position as soon as the page loads
         window.addEventListener("load", () => {
             const savedPosition = localStorage.getItem("scrollPosition");
             if (savedPosition !== null) {
-                window.scrollTo(0, parseInt(savedPosition, 10));
+                if (savedPosition === "bottom") {
+                    window.scrollTo(0, document.documentElement.scrollHeight);
+                } else {
+                    window.scrollTo(0, parseInt(savedPosition, 10));
+                }
                 localStorage.removeItem("scrollPosition"); // Clear it so it doesn't break normal visits
             }
         });
