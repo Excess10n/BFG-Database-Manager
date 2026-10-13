@@ -1876,9 +1876,37 @@ def ExportExcel(request):
     style = request.GET.get("style")
 
     today = datetime.datetime.now()
-    
+
+    # site owners report
     if style == "2":
-        records = Record.objects.filter(dateFound__range=[dateFrom, dateTo], siteFK=Site.objects.get(name=site_name))
+        records = Record.objects.filter(dateFound__range=[dateFrom, dateTo], siteFK=Site.objects.get(name=site_name)).order_by("fungusFK__currentFungus__group", "fungusFK__currentFungus__fullName")
+
+        # sort the order of the groups to be most popular first then so on... (taken from web report)
+        groups = []
+        sortedRecords = []
+        for rec in records:
+            gro = rec.fungusFK.currentFungus.group
+            if not gro in groups:
+                groups.append(gro)
+                sortedRecords.append({"group": gro, "records": [rec], "total": 1})
+            else:
+                for s in sortedRecords:
+                    if s["group"] == gro:
+                        s["records"].append(rec)
+                        s["total"] += 1
+                        break
+        old = sortedRecords
+        sortedRecords = []
+        for o in old:
+            for i in range(len(sortedRecords)):
+                if sortedRecords[i]["total"] < o["total"]:
+                    sortedRecords.insert(i, o)
+                    break
+            else:
+                sortedRecords.append(o)
+        records = []
+        for s in sortedRecords:
+            records += s["records"]
 
         file = "RecordDate,Site,ReportingName,EnglishName,Collector,Identifier,Confirmer,Association 1,Association 2,Association 3,Substrate,OS Grid Ref,Comments\n"
 
@@ -1895,7 +1923,7 @@ def ExportExcel(request):
         response["Content-Disposition"] = f'attachment; filename="Excel site owners export {date}.csv"'
         return response
 
-
+    # FRDBI excel report
     if site_name == None or site_name == "None":
         records = Record.objects.filter(dateFound__range=[dateFrom, dateTo])
     else:
