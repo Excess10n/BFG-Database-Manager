@@ -28,15 +28,17 @@
         </form>
     </div>
     <div class="col-5 border-top border-end border-bottom border-dark">
-        <div class="border-bottom border-dark">
+        {% if initPresent %}
+            <div class="border-bottom border-dark">
+        {% endif %}
         <form method="POST" enctype="multipart/form-data">
             {% csrf_token %}
             {{forayForm|crispy}}
             <input type="submit" value="Submit" class="btn btn-primary">
         </form>
         <br/>
-        </div>
         {% if initPresent %}
+        </div>
             <br/>
             <h4>A-Z order</h4>
             <form method="POST" enctype="multipart/form-data">
@@ -48,9 +50,9 @@
 </div>
 </div>
 <br/>
-<nav aria-label="...">
-    <ul class="pagination">
-    {% if page.isNum %}
+{% if initPresent %}
+    <nav aria-label="...">
+        <ul class="pagination">
         {% if page.first %}
             <li class="page-item disabled">
                 <a class="page-link" href="#" tabindex="-1" aria-disabled="true">First</a>
@@ -61,12 +63,12 @@
             </li>
         {% endif %}
         {% for x in page.list %}
-            {% if x == page.current %}
+            {% if x.num == page.current %}
                 <li class="page-item active" aria-current="page">
-                    <a class="page-link" href="/record/edit?page={{x}}&delete={{deleteText}}&{{param}}">{{x}}</a>
+                    <a class="page-link" href="/record/edit?page={{x.num}}&delete={{deleteText}}&{{param}}">{{x.label}}</a>
                 </li>
             {% else %}
-                <li class="page-item"><a class="page-link" href="/record/edit?page={{x}}&delete={{deleteText}}&{{param}}">{{x}}</a></li>
+                <li class="page-item"><a class="page-link" href="/record/edit?page={{x.num}}&delete={{deleteText}}&{{param}}">{{x.label}}</a></li>
             {% endif %}
         {% endfor %}
         {% if page.last %}
@@ -78,19 +80,9 @@
                 <a class="page-link" href="/record/edit?page={{page.pageCount}}&delete={{deleteText}}&{{param}}">Last</a>
             </li>
         {% endif %}
-    {% else %}
-        {% for x in page.list %}
-            {% if x == page.current %}
-                <li class="page-item active" aria-current="page">
-                    <a class="page-link" href="/record/edit?page={{x}}&delete={{deleteText}}&{{param}}">{{x}}</a>
-                </li>
-            {% else %}
-                <li class="page-item"><a class="page-link" href="/record/edit?page={{x}}&delete={{deleteText}}&{{param}}">{{x}}</a></li>
-            {% endif %}
-        {% endfor %}
-    {% endif %}
-    </ul>
-</nav>
+        </ul>
+    </nav>
+{% endif %}
 <br/>
 {% if messages and not last %}
     {% for message in messages %}
@@ -146,44 +138,32 @@
 <br/>
 <nav aria-label="...">
     <ul class="pagination">
-    {% if page.isNum %}
-        {% if page.first %}
-            <li class="page-item disabled">
-                <a class="page-link" href="#" tabindex="-1" aria-disabled="true">First</a>
-            </li>
-        {% else %}
-            <li class="page-item">
-                <a class="page-link" href="/record/edit?page=1&delete={{deleteText}}&{{param}}">First</a>
-            </li>
-        {% endif %}
-        {% for x in page.list %}
-            {% if x == page.current %}
-                <li class="page-item active" aria-current="page">
-                    <a class="page-link" href="/record/edit?page={{x}}&delete={{deleteText}}&{{param}}">{{x}}</a>
-                </li>
-            {% else %}
-                <li class="page-item"><a class="page-link" href="/record/edit?page={{x}}&delete={{deleteText}}&{{param}}">{{x}}</a></li>
-            {% endif %}
-        {% endfor %}
-        {% if page.last %}
-            <li class="page-item disabled">
-                <a class="page-link" href="#" tabindex="-1" aria-disabled="true">Last</a>
-            </li>
-        {% else %}
-            <li class="page-item">
-                <a class="page-link" href="/record/edit?page={{page.pageCount}}&delete={{deleteText}}&{{param}}">Last</a>
-            </li>
-        {% endif %}
+    {% if page.first %}
+        <li class="page-item disabled">
+            <a class="page-link" href="#" tabindex="-1" aria-disabled="true">First</a>
+        </li>
     {% else %}
-        {% for x in page.list %}
-            {% if x == page.current %}
-                <li class="page-item active" aria-current="page">
-                    <a class="page-link" href="/record/edit?page={{x}}&delete={{deleteText}}&{{param}}">{{x}}</a>
-                </li>
-            {% else %}
-                <li class="page-item"><a class="page-link" href="/record/edit?page={{x}}&delete={{deleteText}}&{{param}}">{{x}}</a></li>
-            {% endif %}
-        {% endfor %}
+        <li class="page-item">
+            <a class="page-link" href="/record/edit?page=1&delete={{deleteText}}&{{param}}">First</a>
+        </li>
+    {% endif %}
+    {% for x in page.list %}
+        {% if x.num == page.current %}
+            <li class="page-item active" aria-current="page">
+                <a class="page-link" href="/record/edit?page={{x.num}}&delete={{deleteText}}&{{param}}">{{x.label}}</a>
+            </li>
+        {% else %}
+            <li class="page-item"><a class="page-link" href="/record/edit?page={{x.num}}&delete={{deleteText}}&{{param}}">{{x.label}}</a></li>
+        {% endif %}
+    {% endfor %}
+    {% if page.last %}
+        <li class="page-item disabled">
+            <a class="page-link" href="#" tabindex="-1" aria-disabled="true">Last</a>
+        </li>
+    {% else %}
+        <li class="page-item">
+            <a class="page-link" href="/record/edit?page={{page.pageCount}}&delete={{deleteText}}&{{param}}">Last</a>
+        </li>
     {% endif %}
     </ul>
 </nav>
@@ -246,6 +226,15 @@
         });
     })();
 </script>
+
+{% if last == 'new' %}
+<script>
+    const newFungusInput = document.querySelector('input[name="form0-fungus"]');
+    if (newFungusInput) {
+        newFungusInput.focus();
+    }
+</script>
+{% endif %}
 
 {% include "scripts/fungiSuggestions.html" %}
 

@@ -583,19 +583,26 @@ def RecordEditView(request):
         else:
             formList.append(dic)
 
-    # pagination (alpha if order is 2)
-    if order == "1":
-        if not currentPage.isnumeric():
-            currentPage = "1"
-        currentPage, pageCount, start, end, pageList, _ = pagination(currentPage, records.count(), 15)
-        formList = formList[start:end]
-        page = {"isNum": True, "current": currentPage, "first": currentPage == 1, "last": currentPage == pageCount, "pageCount": pageCount, "list": pageList}
-
+    # pagination (alpha labels if order is 2)
+    currentPage, pageCount, start, end, pageList, bounds = pagination(currentPage, records.count(), 15)
+    pageLabels = []
+    if order == "2":
+        for i in range(len(pageList)):
+            first = formList[bounds[i][0]]["name"][0].upper()
+            last = formList[bounds[i][1]-1]["name"][0].upper()
+            pageLabels.append({"num": pageList[i], "label": f"({first}-{last}) {pageList[i]}"})
     else:
-        if currentPage.isnumeric():
-            currentPage = "A"
-        currentPage, pageList, formList = alphaPagination(currentPage, formList, "name", True)
-        page = {"isNum": False, "current": currentPage, "list": pageList}
+        for i in range(len(pageList)):
+            pageLabels.append({"num": pageList[i], "label": f"{pageList[i]}"})
+
+    formList = formList[start:end]
+    page = {"isNum": True, "current": currentPage, "first": currentPage == 1, "last": currentPage == pageCount, "pageCount": pageCount, "list": pageLabels}
+
+  
+    # if currentPage.isnumeric():
+    #     currentPage = "A"
+    # currentPage, pageList, formList = alphaPagination(currentPage, formList, "name", True)
+    # page = {"isNum": False, "current": currentPage, "list": pageList}
         
 
     # new form
@@ -688,7 +695,13 @@ def RecordBrowseView(request):
     # if form was submitted then take the data from there instead
     if form.is_valid():
         data = form.cleaned_data
-        filt = True
+        # if order is the only value changed, filt is NOT set to True
+        for x, y in data.items():
+            if x == "order":
+                continue
+            if y != None and y != "":
+                filt = True
+                break
         currentPage = 1
         order = data["order"]
     
@@ -796,6 +809,8 @@ def RecordBrowseView(request):
 
         if order == "1":
             records = Record.objects.all().order_by("-dateFound", "fungusFK__currentFungus__fullName")
+        elif order == "2":
+            records = Record.objects.all().order_by("dateFound", "fungusFK__currentFungus__fullName")
         else:
             records = Record.objects.all().order_by("fungusFK__currentFungus__fullName", "-dateFound")
 
@@ -888,6 +903,8 @@ def RecordBrowseView(request):
         # if no filter get all records
         if order == "1":
             records = Record.objects.all().order_by("-dateFound", "fungusFK__currentFungus__fullName")
+        elif order == "2":
+            records = Record.objects.all().order_by("dateFound", "fungusFK__currentFungus__fullName")
         else:
             records = Record.objects.all().order_by("fungusFK__currentFungus__fullName", "-dateFound")
         length = records.count()
@@ -898,9 +915,9 @@ def RecordBrowseView(request):
     # pagination
     currentPage, pageCount, start, end, pageList, bounds = pagination(currentPage, length)
 
-    # add labels to the options displayed (order 2 only) (AI GEN used for efficinecy improvement)
+    # add labels to the options displayed (order 3 only) (AI GEN used for efficinecy improvement)
     pageLabels = []
-    if order == "2":
+    if order == "3":
         if bounds and bounds[0][1] > 0:
             firstLabelIndex = bounds[0][0]
             labelNames = list(
@@ -944,7 +961,7 @@ def RecordBrowseView(request):
     except:
         expand = -1
 
-    param += f"order={order}&"
+    param += f"&order={order}"
 
     context = {"records": records, "param": param, "form": form, "page": page, "expand": expand, "isManager": isManager, "species": species}
     return render(request, 'dataManager/recordBrowse.html', context)

@@ -373,11 +373,12 @@ class RecordFilterForm(forms.Form):
     #     return fungi
 
     CHOICES = [
-        ('1', 'Off'),
-        ('2', 'On'),
+        ('1', 'Latest record first'),
+        ('2', 'Earliest record first'),
+        ('3', 'A-Z'),
     ]
     order = forms.ChoiceField(
-        label= "A-Z order",
+        label= "Order by:",
         required=False,
         widget=forms.RadioSelect,
         choices=CHOICES,
