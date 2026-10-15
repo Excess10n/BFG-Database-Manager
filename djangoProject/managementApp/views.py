@@ -120,7 +120,6 @@ def alphaPagination(currentPage, objects, field, formList=False):
             if obj[field][0].upper() == currentPage:
                 temp.append(obj)
         objects = temp
-        print(objects)
     elif currentPage == "0":
         objects = objects.filter(**regex_kwargs)
     else:
@@ -583,27 +582,19 @@ def RecordEditView(request):
         else:
             formList.append(dic)
 
-    # pagination (alpha labels if order is 2)
-    currentPage, pageCount, start, end, pageList, bounds = pagination(currentPage, records.count(), 15)
-    pageLabels = []
-    if order == "2":
-        for i in range(len(pageList)):
-            first = formList[bounds[i][0]]["name"][0].upper()
-            last = formList[bounds[i][1]-1]["name"][0].upper()
-            pageLabels.append({"num": pageList[i], "label": f"({first}-{last}) {pageList[i]}"})
+    # pagination (alpha if order is 2)
+    if order == "1":
+        if not currentPage.isnumeric():
+            currentPage = "1"
+        currentPage, pageCount, start, end, pageList, _ = pagination(currentPage, records.count(), 15)
+        formList = formList[start:end]
+        page = {"isNum": True, "current": currentPage, "first": currentPage == 1, "last": currentPage == pageCount, "pageCount": pageCount, "list": pageList}
     else:
-        for i in range(len(pageList)):
-            pageLabels.append({"num": pageList[i], "label": f"{pageList[i]}"})
+        if currentPage.isnumeric():
+            currentPage = "A"
+        currentPage, pageList, formList = alphaPagination(currentPage, formList, "name", True)
+        page = {"isNum": False, "current": currentPage, "list": pageList}
 
-    formList = formList[start:end]
-    page = {"isNum": True, "current": currentPage, "first": currentPage == 1, "last": currentPage == pageCount, "pageCount": pageCount, "list": pageLabels}
-
-  
-    # if currentPage.isnumeric():
-    #     currentPage = "A"
-    # currentPage, pageList, formList = alphaPagination(currentPage, formList, "name", True)
-    # page = {"isNum": False, "current": currentPage, "list": pageList}
-        
 
     # new form
     newForm = RecordForm("Save", request.POST if submitted_prefix == "form0" else None, request.FILES or None, prefix="form0")
