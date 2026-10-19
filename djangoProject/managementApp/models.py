@@ -129,6 +129,7 @@ class Record(models.Model):
 
     uniqueCode = models.CharField(max_length=15, null=False, blank=False, unique=True)
     fungusFK = models.ForeignKey(FungiCurrent, on_delete=models.RESTRICT, null=False)
+    recordedAs = models.CharField(max_length=196, null=True, blank=True)
     siteFK = models.ForeignKey(Site, on_delete=models.RESTRICT, null=False)
     recorderFK = models.ForeignKey(Member, on_delete=models.RESTRICT, null=False, related_name='Record_recorder')
     identifierFK = models.ForeignKey(Member, on_delete=models.RESTRICT, null=False, related_name='Record_identifier')

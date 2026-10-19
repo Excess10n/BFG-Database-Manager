@@ -93,8 +93,13 @@ class RecordForm(forms.ModelForm):
         form_fields = [Div('fungus')]
         if english_name:
             form_fields.append(HTML(f'<div class="text-muted small">({english_name})</div>'))
-        
 
+        # if it was recorded as something else put that underneath too
+        recorded = getattr(self.instance, "recordedAs", None)
+        if recorded:
+            form_fields.append(HTML(f'<div class="small"><b>ⓘ Originally recorded as:</b></div>'))
+            form_fields.append(HTML(f'<div class="small"><b>{recorded}</b></div>'))
+        
         # first site/bucks/database record gets displayed
         first = getattr(self.instance, "firstRecord", None)
         if first is not None:
@@ -210,6 +215,13 @@ class RecordFormBrowse(forms.ModelForm):
         form_fields = [Div('fungus')]
         if english_name:
             form_fields.append(HTML(f'<div class="text-muted small">({english_name})</div>'))
+
+        # if it was recorded as something else put that underneath too (taken from above)
+        recorded = getattr(self.instance, "recordedAs", None)
+        if recorded:
+            form_fields.append(HTML(f'<div class="small"><b>ⓘ Originally recorded as:</b></div>'))
+            form_fields.append(HTML(f'<div class="small"><b>{recorded}</b></div>'))
+        
         form_fields.append(Div('certainty'))
         form_fields.append(Div('site'))
         form_fields.append(Div('dateFound'))

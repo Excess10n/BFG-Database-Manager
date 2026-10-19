@@ -91,7 +91,7 @@
                 ? 450  // target scroll position for recordBrowse.html specifically
                 : 0;   // target for other pages
 
-            window.scrollTo({ top: targetY, behavior: 'smooth' });
+            window.scrollTo({ top: targetY, behavior: 'instant' });
         });
 
         window.addEventListener('scroll', toggleScrollToTopButton);
@@ -114,9 +114,9 @@
             const savedPosition = localStorage.getItem("scrollPosition");
             if (savedPosition !== null) {
                 if (savedPosition === "bottom") {
-                    window.scrollTo(0, document.documentElement.scrollHeight);
+                    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' });
                 } else {
-                    window.scrollTo(0, parseInt(savedPosition, 10));
+                    window.scrollTo({ top: parseInt(savedPosition, 10), behavior: 'instant' });
                 }
                 localStorage.removeItem("scrollPosition"); // Clear it so it doesn't break normal visits
             }

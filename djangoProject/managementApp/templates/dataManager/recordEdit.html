@@ -51,49 +51,56 @@
 </div>
 <br/>
 {% if initPresent %}
-    <nav aria-label="...">
-        <ul class="pagination">
-        {% if page.isNum %}
-            {% if page.first %}
-                <li class="page-item disabled">
-                    <a class="page-link" href="#" tabindex="-1" aria-disabled="true">First</a>
-                </li>
-            {% else %}
-                <li class="page-item">
-                    <a class="page-link" href="/record/edit?page=1&delete={{deleteText}}&{{param}}">First</a>
-                </li>
-            {% endif %}
-            {% for x in page.list %}
-                {% if x == page.current %}
-                    <li class="page-item active" aria-current="page">
-                        <a class="page-link" href="/record/edit?page={{x}}&delete={{deleteText}}&{{param}}">{{x}}</a>
+    <div class="container row">
+    <div class="col-auto">
+        <nav aria-label="...">
+            <ul class="pagination">
+            {% if page.isNum %}
+                {% if page.first %}
+                    <li class="page-item disabled">
+                        <a class="page-link" href="#" tabindex="-1" aria-disabled="true">First</a>
                     </li>
                 {% else %}
-                    <li class="page-item"><a class="page-link" href="/record/edit?page={{x}}&delete={{deleteText}}&{{param}}">{{x}}</a></li>
+                    <li class="page-item">
+                        <a class="page-link" href="/record/edit?page=1&delete={{deleteText}}&{{param}}">First</a>
+                    </li>
                 {% endif %}
-            {% endfor %}
-            {% if page.last %}
-                <li class="page-item disabled">
-                    <a class="page-link" href="#" tabindex="-1" aria-disabled="true">Last</a>
-                </li>
-            {% else %}
-                <li class="page-item">
-                    <a class="page-link" href="/record/edit?page={{page.pageCount}}&delete={{deleteText}}&{{param}}">Last</a>
-                </li>
-            {% endif %}
-        {% else %}
-            {% for x in page.list %}
-                {% if x == page.current %}
-                    <li class="page-item active" aria-current="page">
-                        <a class="page-link" href="/record/edit?page={{x}}&delete={{deleteText}}&{{param}}">{{x}}</a>
+                {% for x in page.list %}
+                    {% if x == page.current %}
+                        <li class="page-item active" aria-current="page">
+                            <a class="page-link" href="/record/edit?page={{x}}&delete={{deleteText}}&{{param}}">{{x}}</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item"><a class="page-link" href="/record/edit?page={{x}}&delete={{deleteText}}&{{param}}">{{x}}</a></li>
+                    {% endif %}
+                {% endfor %}
+                {% if page.last %}
+                    <li class="page-item disabled">
+                        <a class="page-link" href="#" tabindex="-1" aria-disabled="true">Last</a>
                     </li>
                 {% else %}
-                    <li class="page-item"><a class="page-link" href="/record/edit?page={{x}}&delete={{deleteText}}&{{param}}">{{x}}</a></li>
+                    <li class="page-item">
+                        <a class="page-link" href="/record/edit?page={{page.pageCount}}&delete={{deleteText}}&{{param}}">Last</a>
+                    </li>
                 {% endif %}
-            {% endfor %}
-        {% endif %}
-        </ul>
-    </nav>
+            {% else %}
+                {% for x in page.list %}
+                    {% if x == page.current %}
+                        <li class="page-item active" aria-current="page">
+                            <a class="page-link" href="/record/edit?page={{x}}&delete={{deleteText}}&{{param}}">{{x}}</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item"><a class="page-link" href="/record/edit?page={{x}}&delete={{deleteText}}&{{param}}">{{x}}</a></li>
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+            </ul>
+        </nav>
+    </div>
+    <div class="col">
+        <p>Total species count: <b>{{species}}</b></p>
+    </div>
+    </div>
 {% endif %}
 <br/>
 {% if messages and not last %}
@@ -145,52 +152,57 @@
     {% endfor %}
     <datalist id="fungusList"></datalist>
 </div>
-<br/><br/>
-<p>Total species count: <b>{{species}}</b></p>
 <br/>
-<nav aria-label="...">
-    <ul class="pagination">
-    {% if page.isNum %}
-        {% if page.first %}
-            <li class="page-item disabled">
-                <a class="page-link" href="#" tabindex="-1" aria-disabled="true">First</a>
-            </li>
-        {% else %}
-            <li class="page-item">
-                <a class="page-link" href="/record/edit?page=1&delete={{deleteText}}&{{param}}">First</a>
-            </li>
-        {% endif %}
-        {% for x in page.list %}
-            {% if x == page.current %}
-                <li class="page-item active" aria-current="page">
-                    <a class="page-link" href="/record/edit?page={{x}}&delete={{deleteText}}&{{param}}">{{x}}</a>
+<div class="container row">
+<div class="col-auto">
+    <nav aria-label="...">
+        <ul class="pagination">
+        {% if page.isNum %}
+            {% if page.first %}
+                <li class="page-item disabled">
+                    <a class="page-link" href="#" tabindex="-1" aria-disabled="true">First</a>
                 </li>
             {% else %}
-                <li class="page-item"><a class="page-link" href="/record/edit?page={{x}}&delete={{deleteText}}&{{param}}">{{x}}</a></li>
+                <li class="page-item">
+                    <a class="page-link" href="/record/edit?page=1&delete={{deleteText}}&{{param}}">First</a>
+                </li>
             {% endif %}
-        {% endfor %}
-        {% if page.last %}
-            <li class="page-item disabled">
-                <a class="page-link" href="#" tabindex="-1" aria-disabled="true">Last</a>
-            </li>
-        {% else %}
-            <li class="page-item">
-                <a class="page-link" href="/record/edit?page={{page.pageCount}}&delete={{deleteText}}&{{param}}">Last</a>
-            </li>
-        {% endif %}
-    {% else %}
-        {% for x in page.list %}
-            {% if x == page.current %}
-                <li class="page-item active" aria-current="page">
-                    <a class="page-link" href="/record/edit?page={{x}}&delete={{deleteText}}&{{param}}">{{x}}</a>
+            {% for x in page.list %}
+                {% if x == page.current %}
+                    <li class="page-item active" aria-current="page">
+                        <a class="page-link" href="/record/edit?page={{x}}&delete={{deleteText}}&{{param}}">{{x}}</a>
+                    </li>
+                {% else %}
+                    <li class="page-item"><a class="page-link" href="/record/edit?page={{x}}&delete={{deleteText}}&{{param}}">{{x}}</a></li>
+                {% endif %}
+            {% endfor %}
+            {% if page.last %}
+                <li class="page-item disabled">
+                    <a class="page-link" href="#" tabindex="-1" aria-disabled="true">Last</a>
                 </li>
             {% else %}
-                <li class="page-item"><a class="page-link" href="/record/edit?page={{x}}&delete={{deleteText}}&{{param}}">{{x}}</a></li>
+                <li class="page-item">
+                    <a class="page-link" href="/record/edit?page={{page.pageCount}}&delete={{deleteText}}&{{param}}">Last</a>
+                </li>
             {% endif %}
-        {% endfor %}
-    {% endif %}
-    </ul>
-</nav>
+        {% else %}
+            {% for x in page.list %}
+                {% if x == page.current %}
+                    <li class="page-item active" aria-current="page">
+                        <a class="page-link" href="/record/edit?page={{x}}&delete={{deleteText}}&{{param}}">{{x}}</a>
+                    </li>
+                {% else %}
+                    <li class="page-item"><a class="page-link" href="/record/edit?page={{x}}&delete={{deleteText}}&{{param}}">{{x}}</a></li>
+                {% endif %}
+            {% endfor %}
+        {% endif %}
+        </ul>
+    </nav>
+</div>
+<div class="col">
+    <p>Total species count: <b>{{species}}</b></p>
+</div>
+</div>
 {% endif %}
 
 <script>

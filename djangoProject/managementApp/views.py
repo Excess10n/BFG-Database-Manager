@@ -282,8 +282,10 @@ def manageForm(form, new, edit, request):
 
     # ensure all other fields are valid (and change the provided text into an actual object where required)
     try:
-        current, _, _ = getFungiObjects(data["fungus"])
+        current, fungusObj, _ = getFungiObjects(data["fungus"])
         inst.fungusFK = current
+        if fungusObj.fullName != data["fungus"]:
+            inst.recordedAs = data["fungus"]
     except:
         messages.add_message(request, messages.ERROR, f"Fungus \"{data['fungus']}\" not found")
         return False
@@ -501,7 +503,7 @@ def RecordEditView(request):
 
     if request.method == "POST" and submitted_prefix:
         if submitted_prefix == "form0":
-            newForm = RecordForm("Save", request.POST if submitted_prefix == "form0" else None, request.FILES or None, prefix="form0")
+            newForm = RecordForm("Save\nand\nNew", request.POST if submitted_prefix == "form0" else None, request.FILES or None, prefix="form0")
             if newForm.is_valid():
                 done = manageForm(newForm, True, False, request)
                 if done:
@@ -597,7 +599,7 @@ def RecordEditView(request):
 
 
     # new form
-    newForm = RecordForm("Save", request.POST if submitted_prefix == "form0" else None, request.FILES or None, prefix="form0")
+    newForm = RecordForm("Save\nand\nNew", request.POST if submitted_prefix == "form0" else None, request.FILES or None, prefix="form0")
 
     # get species count
     species = records.values_list("fungusFK_id", flat=True).distinct().count()
@@ -1969,7 +1971,13 @@ def ExportExcel(request):
             file += f"\"{rec.confirmerFK.fullName}\","
         else:
             file += ","
-        file += f"\"{rec.assoc1}\",\"{rec.assoc2}\",\"{rec.assoc3}\",\"{rec.substrate}\",{rec.siteFK.gridRef},{rec.siteFK.county},{rec.siteFK.VC},{rec.uniqueCode},\"{rec.remarks}\","
+        
+        if rec.siteFK.VC == 24:
+            county = "Buckinghamshire"
+        else:
+            county = rec.siteFK.county
+        file += f"\"{rec.assoc1}\",\"{rec.assoc2}\",\"{rec.assoc3}\",\"{rec.substrate}\",{rec.siteFK.gridRef},{county},{rec.siteFK.VC},{rec.uniqueCode},\"{rec.remarks}\","
+        
         if rec.litRef != None:
             file += f"\"{rec.litRef}\","
         else:
@@ -2109,7 +2117,7 @@ def ExportReport(request):
             if record.firstRecord == "B":
                 firstText = 'For County'
             if record.firstRecord == "D":
-                firstText = 'For Database'
+                firstText = 'For County'
             
             output += r'{\trowd \trgaph120\cellx2800\cellx5000\cellx7000\cellx9000\cellx10400\cellx11100\cellx11800\cellx12700\cellx16200\trkeep\intbl{'
             output += r'{{\pard\intbl \ql \f0 \fs16 \sa0 \li0 \fi0 ' + record.fungusFK.currentFungus.fullName + r'\par}\cell}'
