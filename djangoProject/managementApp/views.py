@@ -5,7 +5,7 @@ from django.core.exceptions import PermissionDenied
 from django.db.models import RestrictedError, Q
 from django.http import HttpResponse
 from django.template.loader import render_to_string
-from .forms import AssocForm, SubtrForm, SiteForm, SiteSearchForm, RecordOrderForm, RecordFilterForm, RecordForm, RecordFormBrowse, RecordInitialForm, RecordForayForm, MemberForm, MemberSearchForm, MemberLoginForm, ReportExportForm, FRDBIExportForm, FungiForm, FungiSearchForm
+from .forms import AssocForm, SubtrForm, SiteForm, SiteSearchForm, RecordOrderForm, RecordFilterForm, RecordForm, RecordFormBrowse, RecordInitialForm, RecordForayForm, MemberForm, MemberSearchForm, MemberLoginForm, ReportExportForm, FRDBIExportForm, SiteOwnersExportForm, FungiForm, FungiSearchForm
 from .models import Association, Substrate, Site, Record, RecordArchive, Fungi, FungiCurrent, FungiArchive, Member, MemberLogin
 from django.contrib.auth.models import User, Permission
 from .viewFunctions import getFungiObjects, searchFungiObjects, createNewCurrentFungi, databaseBackupOverwrite, databaseBackupOverwriteBuffered, databaseBackupRecordAppend
@@ -1847,9 +1847,26 @@ def ExportView(request):
 
     FRDBIForm = FRDBIExportForm(request.POST or None, prefix="frd")
     if FRDBIForm.is_valid():
-        return redirect(f"/export/FRDBI?dateFrom={FRDBIForm.cleaned_data['dateFrom']}&dateTo={FRDBIForm.cleaned_data['dateTo']}")
+        data = FRDBIForm.cleaned_data
+        if data['site'] != None and data['site'] != "":
+            isSite = Site.objects.filter(name=data['site']).exists()
+            if not isSite:
+                messages.add_message(request, messages.ERROR, f"Site \"{data['site']}\" not found")
+                return redirect("/export")
+            return redirect(f"/export/FRDBI?dateFrom={data['dateFrom']}&dateTo={data['dateTo']}&site={data['site']}")
+        
+        return redirect(f"/export/FRDBI?dateFrom={data['dateFrom']}&dateTo={data['dateTo']}")
+
+    ownersForm = SiteOwnersExportForm(request.POST or None, prefix="site")
+    if ownersForm.is_valid():
+        data = ownersForm.cleaned_data
+        isSite = Site.objects.filter(name=data['site']).exists()
+        if not isSite:
+            messages.add_message(request, messages.ERROR, f"Site \"{data['site']}\" not found")
+            return redirect("/export")
+        return redirect(f"/export/FRDBI/excel?dateFrom={data['dateFrom']}&dateTo={data['dateTo']}&site={data['site']}&exported=b&style=2")
     
-    context = {"forays": forays, "reportForm": reportForm, "FRDBIForm": FRDBIForm, "isAdmin": request.user.is_superuser}
+    context = {"forays": forays, "reportForm": reportForm, "FRDBIForm": FRDBIForm, "ownersForm": ownersForm, "isAdmin": request.user.is_superuser}
     return render(request, 'export/export.html', context)
 
 def ExportFRDBI(request):
@@ -1937,19 +1954,29 @@ def ExportExcel(request):
         for s in sortedRecords:
             records += s["records"]
 
-        file = "RecordDate,Site,ReportingName,EnglishName,Collector,Identifier,Confirmer,Association 1,Association 2,Association 3,Substrate,OS Grid Ref,Comments\n"
+        file = "Record Date,Site,Reporting Name,Name as recorded,English Name,Collector,Identifier,Confirmer,Association 1,Association 2,Association 3,Substrate,OS Grid Ref,Comments\n"
 
         for rec in records:
-            file += f"{rec.dateFound.strftime('%d/%m/%Y')},\"{rec.siteFK.name}\",\"{rec.fungusFK.currentFungus.fullName}\",\"{rec.fungusFK.currentFungus.englishName}\",\"{rec.collectorFK.fullName}\",\"{rec.identifierFK.fullName}\","
+            file += f"{rec.dateFound.strftime('%d/%m/%Y')},\"{rec.siteFK.name}\",\"{rec.fungusFK.currentFungus.fullName}\","
+            if rec.recordedAs != None:
+                file += f"\"{rec.recordedAs}\","
+            else:
+                file += f"\"{rec.fungusFK.currentFungus.fullName}\","
+            file += f"\"{rec.fungusFK.currentFungus.englishName}\",\"{rec.collectorFK.fullName}\",\"{rec.identifierFK.fullName}\","
             if rec.confirmerFK != None:
                 file += f"\"{rec.confirmerFK.fullName}\","
             else:
                 file += ","
             file += f"\"{rec.assoc1}\",\"{rec.assoc2}\",\"{rec.assoc3}\",\"{rec.substrate}\",{rec.siteFK.gridRef},\"{rec.remarks}\"\n"
 
-        date = datetime.datetime.strptime(dateFrom, "%Y-%m-%d").strftime("%d/%m/%Y")
         response = HttpResponse(file, content_type="application/csv")
-        response["Content-Disposition"] = f'attachment; filename="Excel site owners export {date}.csv"'
+        if dateFrom == dateTo:
+            date = datetime.datetime.strptime(dateFrom, "%Y-%m-%d").strftime("%d/%m/%Y")
+            response["Content-Disposition"] = f'attachment; filename="Excel site owners export {date}.csv"'
+        else:
+            date1 = datetime.datetime.strptime(dateFrom, "%Y-%m-%d").strftime("%d/%m/%Y")
+            date2 = datetime.datetime.strptime(dateTo, "%Y-%m-%d").strftime("%d/%m/%Y")
+            response["Content-Disposition"] = f'attachment; filename="Excel site owners export {date1} to {date2}.csv"'
         return response
 
     # FRDBI excel report

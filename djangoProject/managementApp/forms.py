@@ -97,7 +97,7 @@ class RecordForm(forms.ModelForm):
         # if it was recorded as something else put that underneath too
         recorded = getattr(self.instance, "recordedAs", None)
         if recorded:
-            form_fields.append(HTML(f'<div class="small"><b>ⓘ Originally recorded as:</b></div>'))
+            form_fields.append(HTML(f'<div class="small"><b>Recorded as:</b></div>'))
             form_fields.append(HTML(f'<div class="small"><b>{recorded}</b></div>'))
         
         # first site/bucks/database record gets displayed
@@ -219,7 +219,7 @@ class RecordFormBrowse(forms.ModelForm):
         # if it was recorded as something else put that underneath too (taken from above)
         recorded = getattr(self.instance, "recordedAs", None)
         if recorded:
-            form_fields.append(HTML(f'<div class="small"><b>ⓘ Originally recorded as:</b></div>'))
+            form_fields.append(HTML(f'<div class="small"><b>Recorded as:</b></div>'))
             form_fields.append(HTML(f'<div class="small"><b>{recorded}</b></div>'))
         
         form_fields.append(Div('certainty'))
@@ -668,3 +668,9 @@ class ReportExportForm(forms.Form):
 class FRDBIExportForm(forms.Form):
     dateFrom = forms.DateField(label="Date From", required=True, widget=forms.TextInput(attrs={'type': 'date'}))
     dateTo = forms.DateField(label="Date To", required=True, widget=forms.TextInput(attrs={'type': 'date'}))
+    site = forms.CharField(label="Site (optional)", required=False, max_length=64, widget=ListTextWidget(dataset=get_site_names, name="siteList"))
+
+class SiteOwnersExportForm(forms.Form):
+    dateFrom = forms.DateField(label="Date From", required=True, widget=forms.TextInput(attrs={'type': 'date'}))
+    dateTo = forms.DateField(label="Date To", required=True, widget=forms.TextInput(attrs={'type': 'date'}))
+    site = forms.CharField(label="Site", required=True, max_length=64, widget=ListTextWidget(dataset=get_site_names, name="siteList"))

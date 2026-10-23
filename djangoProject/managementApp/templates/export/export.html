@@ -50,15 +50,24 @@
     </div>
 {% endfor %}
 </div>
-<br/><br/><br/><br/>
-<h3>FRDBI Export</h3>
+<br/><br/>
 <div class="container">
 <div class="row">
     <div class="col-3">
+        <h4>FRDBI Range Export</h4>
         <form method="POST" enctype="multipart/form-data">
             {% csrf_token %}
             {{FRDBIForm|crispy}}
             <input type="submit" value="Open Export Page" class="btn btn-primary">
+        </form>
+    </div>
+    <div class="col-2"></div>
+    <div class="col-3">
+        <h4>Site Owners Range Export</h4>
+        <form method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+            {{ownersForm|crispy}}
+            <input type="submit" value="Download" class="btn btn-primary">
         </form>
     </div>
     <div class="col"></div>

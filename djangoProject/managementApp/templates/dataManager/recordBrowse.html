@@ -52,7 +52,7 @@
 <br/>
 <div class="container">
 <div class="row border-bottom border-dark">
-    <div class="col-2"><b>Name as recorded</b></div>
+    <div class="col-2"><b>Name</b></div>
     <div class="col-2"><b>Site</b></div>
     <div class="col-1"><b>Date</b></div>
     <div class="col-2"><b>Substrate</b></div>
@@ -117,7 +117,7 @@
             <div class="row text-danger"><b>First Database Record!</b></div>
             {% endif %}
         </div>
-        <div class="col-1_5">
+        <div class="col-2">
             <div class="row">Lit Ref: {{record.litRef}}</div>
             {% if record.DNATest == "Pending" %}
             <div class="row text-danger">DNA Test: {{record.DNATest}}</div>
@@ -127,9 +127,13 @@
             <div class="row">DNA Test: {{record.DNATest}}</div>
             {% endif %}
             <div class="row">Certainty: {{record.certainty}}</div>
+            {% if record.recordedAs != None %}
+            <div class="row small"><b>Recorded as:</b></div>
+            <div class="row small"><b>{{record.recordedAs}}</b></div>
+            {% endif %}
         </div>
         <div class="col-1">Remarks:</div>
-        <div class="col-3_5">{{record.remarks}}</div>
+        <div class="col-3">{{record.remarks}}</div>
         <div class="col-1 mt-1">
             {% if isManager %}
             <a href="/record/browse/{{record.id}}?page={{page.current}}&{{param}}&expand={{record.id}}" class="button-class"><button type="button" class="btn btn-primary">edit</button></a>
