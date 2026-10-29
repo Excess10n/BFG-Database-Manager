@@ -1,11 +1,12 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth import logout
 from django.contrib import messages
 from django.core import serializers
 from django.core.exceptions import PermissionDenied
 from django.db.models import RestrictedError, Q
 from django.http import HttpResponse
 from django.template.loader import render_to_string
-from .forms import AssocForm, SubtrForm, SiteForm, SiteSearchForm, RecordOrderForm, RecordFilterForm, RecordForm, RecordFormBrowse, RecordInitialForm, RecordForayForm, MemberForm, MemberSearchForm, MemberLoginForm, ReportExportForm, FRDBIExportForm, SiteOwnersExportForm, FungiForm, FungiSearchForm
+from .forms import AssocForm, SubtrForm, SiteForm, SiteSearchForm, RecordOrderForm, RecordFilterForm, RecordForm, RecordFormBrowse, RecordInitialForm, RecordForayForm, MemberForm, MemberSearchForm, MemberLoginForm, MemberSelfForm, ReportExportForm, FRDBIExportForm, SiteOwnersExportForm, FungiForm, FungiSearchForm
 from .models import Association, Substrate, Site, Record, RecordArchive, Fungi, FungiCurrent, FungiArchive, Member, MemberLogin
 from django.contrib.auth.models import User, Permission
 from .viewFunctions import getFungiObjects, searchFungiObjects, createNewCurrentFungi, databaseBackupOverwrite, databaseBackupOverwriteBuffered, databaseBackupRecordAppend
@@ -186,6 +187,11 @@ def IndexView(request):
                     "title": "Record browser",
                     "desc": "browse the records",
                     "link": "/record/browse"
+                },
+                {
+                    "title": "Account settings",
+                    "desc": "change your username and password here",
+                    "link": "/member/edit"
                 }
             ],
             "isManager": isManager
@@ -650,6 +656,7 @@ def RecordBrowseView(request):
     data = {}
     data["fungus"] = request.GET.get("fungus")
     data["site"] = request.GET.get("site")
+    data["id"] = request.GET.get("id")
     data["vc"] = request.GET.get("vc")
     data["recorder"] = request.GET.get("rec")
     data["collector"] = request.GET.get("coll")
@@ -704,6 +711,7 @@ def RecordBrowseView(request):
         # ---------------------
         fungus = None
         site = None
+        id = None
         vc = None
         recorder = None
         collector = None
@@ -730,6 +738,14 @@ def RecordBrowseView(request):
                 param += f"site={data['site']}&"
             except:
                 messages.add_message(request, messages.ERROR, f"Site \"{data['site']}\" not found")
+                redirect(RecordBrowseView)
+
+        if data["id"] != "" and data["id"] != None:
+            try:
+                id = Record.objects.get(uniqueCode=data["id"])
+                param += f"id={data['id']}&"
+            except:
+                messages.add_message(request, messages.ERROR, f"Unique Code \"{data['id']}\" not found")
                 redirect(RecordBrowseView)
 
         if data["vc"] != "" and data["vc"] != None:
@@ -820,6 +836,8 @@ def RecordBrowseView(request):
             records = records.filter(fungusFK__in=fungus)
         if site != None:
             records = records.filter(siteFK=site)
+        if id != None:
+            records = records.filter(uniqueCode=id)
         if vc != None:
             records = records.filter(siteFK__VC=vc)
         if recorder != None:
@@ -1390,42 +1408,43 @@ def MemberView(request):
         if member != None:
             param += f"search={member}&"
 
-    # BFGmember login
-    if MemberLogin.objects.count() == 0:
-        login = None
-        loginForm = MemberLoginForm("Change", request.POST or None, prefix="loginForm")
-    else:
-        login = MemberLogin.objects.first()
-        loginForm = MemberLoginForm("Change", request.POST or None, prefix="loginForm", initial={"username": login.username})
+    # BFGmember login (DEPRECIATED)
 
-    if request.method == "POST" and "loginForm-username" in request.POST:
-        if loginForm.is_valid():
-            username = loginForm.cleaned_data["username"]
-            password = loginForm.cleaned_data["password"]
-            conf = loginForm.cleaned_data["confPassword"]
-            if username == "" or password == "" or conf == "":
-                messages.add_message(request, messages.ERROR, f"username or password field is empty")
-                return redirect(f"/member")
-            if password != conf:
-                messages.add_message(request, messages.ERROR, f"Passwords do not match")
-                return redirect(f"/member")
+    # if MemberLogin.objects.count() == 0:
+    #     login = None
+    #     loginForm = MemberLoginForm("Change", request.POST or None, prefix="loginForm")
+    # else:
+    #     login = MemberLogin.objects.first()
+    #     loginForm = MemberLoginForm("Change", request.POST or None, prefix="loginForm", initial={"username": login.username})
+
+    # if request.method == "POST" and "loginForm-username" in request.POST:
+    #     if loginForm.is_valid():
+    #         username = loginForm.cleaned_data["username"]
+    #         password = loginForm.cleaned_data["password"]
+    #         conf = loginForm.cleaned_data["confPassword"]
+    #         if username == "" or password == "" or conf == "":
+    #             messages.add_message(request, messages.ERROR, f"username or password field is empty")
+    #             return redirect(f"/member")
+    #         if password != conf:
+    #             messages.add_message(request, messages.ERROR, f"Passwords do not match")
+    #             return redirect(f"/member")
     
-            if login != None:
-                user = User.objects.get(username=login.username)
-                user.set_password(password)
-                user.username = username
-                user.save()
-                login.username = username
-                login.save()
-                messages.add_message(request, messages.INFO, "Changed member login details")
-                return redirect(f"/member")
+    #         if login != None:
+    #             user = User.objects.get(username=login.username)
+    #             user.set_password(password)
+    #             user.username = username
+    #             user.save()
+    #             login.username = username
+    #             login.save()
+    #             messages.add_message(request, messages.INFO, "Changed member login details")
+    #             return redirect(f"/member")
             
-            user = User.objects.create_user(username, None, password)
-            permission = Permission.objects.get(codename='member')
-            user.user_permissions.add(permission)
-            MemberLogin(username=username).save()
-            messages.add_message(request, messages.INFO, "Changed member login details")
-            return redirect(f"/member")
+    #         user = User.objects.create_user(username, None, password)
+    #         permission = Permission.objects.get(codename='member')
+    #         user.user_permissions.add(permission)
+    #         MemberLogin(username=username).save()
+    #         messages.add_message(request, messages.INFO, "Changed member login details")
+    #         return redirect(f"/member")
 
     # form
     form = MemberForm("Add", request.POST or None, prefix="newForm")
@@ -1488,7 +1507,7 @@ def MemberView(request):
             | Q(collectorFK=member)
         ).count()
 
-    context = {"newForm": form, "searchForm": searchForm, "loginForm": loginForm, "new": new, "members": members, "param": param, "page": page}
+    context = {"newForm": form, "searchForm": searchForm, "new": new, "members": members, "param": param, "page": page}
     return render(request, 'dataManager/member.html', context)
 
 def MemberEditSingle(request, id):
@@ -1502,9 +1521,13 @@ def MemberEditSingle(request, id):
 
     param = ""
     deleteOption = False
+    deleteOptionAcc = False
     for key, value in request.GET.items():
         if key == "deleteOption":
             deleteOption = value == "True"
+            continue
+        if key == "deleteOptionAcc":
+            deleteOptionAcc = value == "True"
             continue
         if key == "new":
             continue
@@ -1526,10 +1549,14 @@ def MemberEditSingle(request, id):
     isAdmin = False
     current = False
     if member.profile == None:
-        loginForm = MemberLoginForm("Create new manager", request.POST or None, prefix="loginForm")
+        loginForm = MemberLoginForm("Create new account", request.POST or None, prefix="loginForm", initial={"permission": "1"})
         isManager = False
     else:
-        loginForm = MemberLoginForm("Change manager login details", request.POST or None, prefix="loginForm", initial={"username": member.profile.username})
+        if member.profile.has_perm("managementApp.manager"):
+            perm = "2"
+        else:
+            perm = "1"
+        loginForm = MemberLoginForm("Change account details", request.POST or None, prefix="loginForm", initial={"username": member.profile.username, "permission": perm})
         isManager = True
         if member.profile.is_superuser:
             isAdmin = True
@@ -1540,33 +1567,53 @@ def MemberEditSingle(request, id):
         username = loginForm.cleaned_data["username"]
         password = loginForm.cleaned_data["password"]
         conf = loginForm.cleaned_data["confPassword"]
-        if username == "" or password == "" or conf == "":
+
+        if username == "":
             messages.add_message(request, messages.ERROR, f"username or password field is empty")
             return redirect(f"/member/{id}?{param}")
         if password != conf:
             messages.add_message(request, messages.ERROR, f"Passwords do not match")
             return redirect(f"/member/{id}?{param}")
 
+        if loginForm.cleaned_data["permission"] == "2":
+            permission = Permission.objects.get(codename='manager')
+        else:
+            permission = Permission.objects.get(codename='member')
+
         if isManager:
             user = member.profile
-            user.set_password(password)
+            # give error if manager attempts to remove their own manager perm
+            if current:
+                if loginForm.cleaned_data["permission"] == "1" and user.has_perm("managementApp.manager"):
+                    messages.add_message(request, messages.ERROR, f"Cannot remove your own manager access")
+                    return redirect(f"/member/{id}?{param}")
+            # change details
+            if password != "":
+                user.set_password(password)
             user.username = username
+            # change perms
+            user.user_permissions.clear()
+            user.user_permissions.add(permission)
+
             user.save()
-            messages.add_message(request, messages.INFO, "Changed manager details")
+            messages.add_message(request, messages.INFO, "Changed account details")
             if current:
                 return redirect("/")
             return redirect(f"/member/{id}?{param}")
+
+        if username == "" or password == "" or conf == "":
+            messages.add_message(request, messages.ERROR, f"username or password field is empty")
+            return redirect(f"/member/{id}?{param}")
         
         user = User.objects.create_user(username, None, password)
-        permission = Permission.objects.get(codename='manager')
         user.user_permissions.add(permission)
         member.profile = user
         member.save()
-        messages.add_message(request, messages.INFO, "Created new manager")
+        messages.add_message(request, messages.INFO, "Created new account")
         return redirect(f"/member/{id}?{param}")
 
-    
-    context = {"member": member, "form": form, "loginForm": loginForm, "param": param, "deleteOption": deleteOption, "isManager": isManager, "isAdmin": isAdmin, "current": current}
+    print(current)
+    context = {"member": member, "form": form, "loginForm": loginForm, "param": param, "deleteOption": deleteOption, "deleteOptionAcc": deleteOptionAcc, "isManager": isManager, "isAdmin": isAdmin, "current": current}
     return render(request, 'dataManager/memberEditSingle.html', context)
 
 def MemberDelete(request, id):
@@ -1589,10 +1636,11 @@ def MemberDelete(request, id):
     if member.initials == ANON_INITIALS:
         messages.add_message(request, messages.ERROR, "Anonymous can't be deleted")
         return redirect(f"/member/{id}?{param}")
-    
+
     if member.profile != None:
-        messages.add_message(request, messages.ERROR, "This member is a manager and can't be deleted")
-        return redirect(f"/member/{id}?{param}")
+        if member.profile.has_perm("managementApp.manager"):
+            messages.add_message(request, messages.ERROR, "This member is a manager and can't be deleted")
+            return redirect(f"/member/{id}?{param}")
     
     if request.method == "POST":
         replacement_member = Member.objects.get(initials=ANON_INITIALS)
@@ -1630,6 +1678,9 @@ def MemberDelete(request, id):
             record.photographerFK = replacement_member
             record.save(update_fields=["photographerFK"])
 
+        # delete profile too
+        if member.profile != None:
+            member.profile.delete()
         member.delete()
         messages.add_message(request, messages.INFO, "Member deleted")
     
@@ -1653,15 +1704,15 @@ def ManagerDelete(request, id):
         param = param[:-1]
 
     if member.profile == None:
-        messages.add_message(request, messages.ERROR, "Manager delete failed: This member is not a manager")
+        messages.add_message(request, messages.ERROR, "Account delete failed: This member does not have an account")
         return redirect(f"/member/{id}?{param}")
     
     if member.profile == request.user:
-        messages.add_message(request, messages.ERROR, "Manager delete failed: You cannot delete your own manager details")
+        messages.add_message(request, messages.ERROR, "Account delete failed: You cannot delete your own account details")
         return redirect(f"/member/{id}?{param}")
 
     if member.profile.is_superuser:
-        messages.add_message(request, messages.ERROR, "Manager delete failed: This member is an admin")
+        messages.add_message(request, messages.ERROR, "Account delete failed: This member is an admin")
         return redirect(f"/member/{id}?{param}")
     
     if request.method == "POST":
@@ -1669,9 +1720,46 @@ def ManagerDelete(request, id):
         member.profile = None
         member.save()
         user.delete()
-        messages.add_message(request, messages.INFO, "Manager deleted")
+        messages.add_message(request, messages.INFO, "Account deleted")
     
     return redirect(f"/member/{id}?{param}")
+
+def MemberEditSelf(request):
+    if not request.user.is_authenticated:
+        raise PermissionDenied()
+
+    user = request.user
+    deleteOptionAcc = request.GET.get("deleteOptionAcc") == "True"
+    form = MemberSelfForm(request.POST or None, instance=user, prefix="editForm")
+
+    if request.method == "POST":
+        if "delete_account" in request.POST:
+            if user.is_superuser:
+                messages.add_message(request, messages.ERROR, "Account delete failed: Admin accounts can't be deleted")
+                return redirect("/member/edit/")
+
+            member = Member.objects.filter(profile=user).first()
+            if member is not None:
+                member.profile = None
+                member.save(update_fields=["profile"])
+
+            logout(request)
+            user.delete()
+            messages.add_message(request, messages.INFO, "Account deleted")
+            return redirect("/")
+
+        if form.is_valid():
+            form.save()
+            messages.add_message(request, messages.INFO, "Changed username")
+            return redirect("/member/edit/")
+
+    canDeleteAccount = not user.is_superuser
+    context = {
+        "form": form,
+        "deleteOptionAcc": deleteOptionAcc,
+        "canDeleteAccount": canDeleteAccount,
+    }
+    return render(request, "dataManager/memberEditSelf.html", context)
 
 # ---------------
 # SUBSTRATE VIEWS
@@ -2147,7 +2235,12 @@ def ExportReport(request):
                 firstText = 'For County'
             
             output += r'{\trowd \trgaph120\cellx2800\cellx5000\cellx7000\cellx9000\cellx10400\cellx11100\cellx11800\cellx12700\cellx16200\trkeep\intbl{'
-            output += r'{{\pard\intbl \ql \f0 \fs16 \sa0 \li0 \fi0 ' + record.fungusFK.currentFungus.fullName + r'\par}\cell}'
+            output += r'{{\pard\intbl \ql \f0 \fs16 \sa0 \li0 \fi0 ' + record.fungusFK.currentFungus.fullName + r'\par}'
+            # if there is a recordedAs value then add it here
+            if record.recordedAs != None and record.recordedAs != "":
+                output += r'{\pard\intbl \ql \f0 \fs12 \sa0 \li0 \fi0 Recorded as: ' + record.recordedAs + r'\par}\cell}'
+            else:
+                output += r'\cell}'
             output += r'{{\pard\intbl \ql \f0 \fs16 \sa0 \li0 \fi0 ' + record.fungusFK.currentFungus.englishName + r'\par}\cell}'
             output += r'{{\pard\intbl \ql \f0 \fs16 \sa0 \li0 \fi0 ' + repr(record.substrate)[1:-1] + r'\par}\cell}'
             output += r'{{\pard\intbl \ql \f0 \fs16 \sa0 \li0 \fi0 ' + repr(record.assoc1)[1:-1] + r'\par}\cell}'

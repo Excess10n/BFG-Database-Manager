@@ -3,6 +3,7 @@
 {% load crispy_forms_tags %}
 
 {% block content %}
+{% block messages %}{% endblock messages %}
 <div class="container">
 <div class="row">
     <h2 class="col-auto me-auto">Editing member: {{member.fullName}}</h2>
@@ -35,17 +36,21 @@
         {% crispy form %}
     </form>
 </div>
-<br/><br/><br/>
-<h3>Manager details</h3>
+<br/>
+{% for message in messages %}
+    <div class="container alert {{message.tags}}">{{message}}</div>
+{% endfor %}
+<br/><br/>
+<h3>Account details</h3>
 {% if isAdmin %}
     <p>This member is a database admin, you can't change their details</p>
 {% else %}
-    {% if isManager %}
-        <p>This member <b>is</b> a database mananger, you can change their details below (note: the password is not displayed even though they have one)</p>
-    {% elif current %}
-        <p>You can change your own login details below (note: you will be signed out after changing them)</p>
+    {% if current %}
+        <p>You can change your own account details below (note: you will be signed out after changing them)</p>
+    {% elif isManager %}
+        <p>This member <b>does</b> have an account, you can change their details below (note: the password is not displayed even though they have one)</p>
     {% else %}
-        <p>This member <b>is not</b> a database mananger, you can make them a manager by providing a username and password below</p>
+        <p>This member <b>does not</b> have an account, you can make them an account by providing a username and password below</p>
     {% endif %}
     <div class="container">
         <div class="row">
@@ -63,13 +68,28 @@
     </div>
     {% if isManager %}
         <br/><br/>
-        <div class="col-auto">
-            <form action="/member/{{member.id}}/managerDelete/?{{param}}" method="post">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-danger">Delete Manager</button>
-            </form>
+        <div class="container row">
+        {% if deleteOptionAcc %}
+            <div class="col-auto">
+                <h5>Permanently delete account?</h5>
+            </div>
+            <div class="col-auto">
+                <form action="/member/{{member.id}}/managerDelete/?{{param}}" method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Delete account</button>
+                </form>
+            </div>
+            <div class="col-auto">
+                <a href="/member/{{member.id}}?deleteOptionAcc=False&{{param}}" class="button-class"><button type="button" class="btn btn-primary">No</button></a>
+            </div>
+        {% else %}
+            <div class="col-auto">
+                <a href="/member/{{member.id}}?deleteOptionAcc=True&{{param}}" class="button-class"><button type="button" class="btn btn-danger">Delete account</button></a>
+            </div>
+        {% endif %}
         </div>
     {% endif %}
 {% endif %}
+<br/><br/>
 
 {% endblock content %}

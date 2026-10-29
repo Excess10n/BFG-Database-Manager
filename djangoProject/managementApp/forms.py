@@ -1,4 +1,5 @@
 from django import forms
+from django.contrib.auth.models import User
 from .models import Association, Substrate, Site, Fungi, Member, Record
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Submit, HTML
@@ -367,9 +368,10 @@ class RecordFilterForm(forms.Form):
                     Submit('submit', buttonText, css_class='btn btn-primary')),
                     css_class='col'
                     ),
+                Div('id', css_class="col-3"),
                 Div('vc', css_class="col-1"),
                 Div('order', css_class="col-2"),
-                Div(css_class="col-5"),
+                Div(css_class="col-2"),
                 Div('month', css_class="col-1"),
                 Div('dateSingle', css_class="col-2"),
                 Div(HTML('<a href="/record/browse" class="button-class"><button type="button" class="btn btn-danger">Clear</button></a>'), css_class='col'),
@@ -398,6 +400,7 @@ class RecordFilterForm(forms.Form):
 
     fungus = forms.CharField(label="Fungus", max_length=64, required=False, widget=forms.TextInput(attrs={"list": "fungusList", "autocomplete": "off"}))
     site = forms.CharField(label="Site", max_length=64, required=False, widget=ListTextWidget(dataset=get_site_names, name="siteList"))
+    id = forms.CharField(label="Unique Code", max_length=64, required=False)
     vc = forms.IntegerField(label="VC", max_value=100, required=False)
     recorder = forms.CharField(label="Recorder", max_length=128, required=False, widget=ListTextWidget(dataset=get_member_names, name="recorderList"))
     collector = forms.CharField(label="Collector", max_length=128, required=False, widget=ListTextWidget(dataset=get_member_names, name="collectorList"))
@@ -465,7 +468,7 @@ class FungiForm(forms.ModelForm):
 
     synonyms = forms.CharField(
         required=False,
-        label="Alternative names",
+        label="Synonyms",
         widget=forms.Textarea(attrs={"rows": 10}),
         help_text="Enter one name per line"
     )
@@ -605,6 +608,7 @@ class MemberLoginForm(forms.Form):
             Div('username'),
             Div('password'),
             Div('confPassword'),
+            Div('permission'),
             Div(bootstrap.FormActions(
                 Submit('submit', buttonText, css_class='btn btn-primary'))
             )
@@ -612,6 +616,33 @@ class MemberLoginForm(forms.Form):
     username = forms.CharField(label="Username", max_length=64, required=False)
     password = forms.CharField(label="Password", max_length=64, required=False)
     confPassword = forms.CharField(label="Confirm Password", max_length=64, required=False)
+
+    CHOICES = [
+        ('1', 'Member'),
+        ('2', 'Manager'),
+    ]
+    permission = forms.ChoiceField(
+        label= "",
+        required=True,
+        widget=forms.RadioSelect,
+        choices=CHOICES,
+    )
+
+class MemberSelfForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.layout = Layout(
+            Div('username'),
+            Div(bootstrap.FormActions(
+                Submit('submit', "Change username", css_class='btn btn-primary'))
+            )
+        )
+
+    class Meta:
+        model = User
+        fields = ["username"]
+        help_texts = {"username": ""}
 
 class SubtrForm(forms.ModelForm):
     def __init__(self, buttonText, *args, **kwargs):

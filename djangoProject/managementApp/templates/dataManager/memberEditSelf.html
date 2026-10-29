@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container">
+    <div class="row align-items-center">
+        <h2 class="col me-auto">Edit your account</h2>
+        <div class="col-auto">
+            <a href="/" class="btn btn-dark">Back</a>
+        </div>
+    </div>
+</div>
+<div class="mx-auto container row" style="width: 400px;">
+    <div class="row">
+        <form method="post">
+            {% csrf_token %}
+            {% crispy form %}
+        </form>
+    </div>
+    <div class="row">
+        <div class="col-auto">
+            <a href="/auth/password_change/" class="btn btn-primary">Change password</a>
+            <br/><br/><br/><br/>
+        </div>
+    </div>
+{% if canDeleteAccount %}
+    <div class="row">
+    {% if deleteOptionAcc %}
+        <div class="col-auto">
+            <h5>Permanently delete account?</h5>
+        </div>
+        <div class="col-auto">
+            <form method="post">
+                {% csrf_token %}
+                <button type="submit" name="delete_account" value="true" class="btn btn-danger">Delete account</button>
+            </form>
+        </div>
+        <div class="col-auto">
+            <a href="/member/edit/?deleteOptionAcc=False" class="btn btn-primary">No</a>
+        </div>
+    {% else %}
+        <div class="col-auto">
+            <a href="/member/edit/?deleteOptionAcc=True" class="btn btn-danger">Delete account</a>
+        </div>
+    {% endif %}
+    </div>
+{% endif %}
+</div>
+{% endblock content %}

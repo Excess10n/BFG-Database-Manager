@@ -25,13 +25,18 @@
 </div>
 <div class="mx-auto">
 <br/><br/>
+{% if isManager %}
 <p>
-    Last updated: 23/10/2026 at 22:00<br/>
+    Last updated: 29/10/2026 at 22:00<br/>
     Changes made:<br/>
-    - Minor text changes<br/>
-    - Changed the text for the "Recorded as:" label in data entry, and added it to the browser in the "more" section<br/>
-    - Added the functionality to make an FRDBI export and site owner's export with a specified date range and site<br/>
-    - Added a "name as recorded" column to the site owners report<br/>
+    - added what the record was recorded as to the web export<br/>
+    - added the ability to search for a unique identifier in the browser<br/>
+    - added new member log in system, where you can select a member to have a "member" account instead of a manager one<br/>
+    - members can now edit their username, password and delete their account<br/>
+    I will send an email going into a bit more detail on how to use this tomorrow
 </p>
+{% else %}
+<p><b>Remember:</b> change your password in account settings if this is your first time logging in!</p>
+{% endif %}
 </div>
 {% endblock content %}

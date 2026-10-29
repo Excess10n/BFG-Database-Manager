@@ -1,5 +1,5 @@
 from django.urls import path, include
-from .views import IndexView, RecordBrowseView, RecordEditView, RecordEditSingle, RecordDelete, RecordDelete2, FungusView, FungusEditSingle, FungusDelete, SiteView, SiteEditSingle, SiteDelete, SubstrView, SubstrDelete, AssocView, AssocDelete, MemberView, MemberEditSingle, MemberDelete, ManagerDelete, ExportView, ExportBackup, ImportBackup, ExportFRDBI, ExportExcel, ExportReport
+from .views import IndexView, RecordBrowseView, RecordEditView, RecordEditSingle, RecordDelete, RecordDelete2, FungusView, FungusEditSingle, FungusDelete, SiteView, SiteEditSingle, SiteDelete, SubstrView, SubstrDelete, AssocView, AssocDelete, MemberView, MemberEditSingle, MemberEditSelf, MemberDelete, ManagerDelete, ExportView, ExportBackup, ImportBackup, ExportFRDBI, ExportExcel, ExportReport
 from .jsonViews import fungiSuggestions
 
 urlpatterns = [
@@ -26,6 +26,7 @@ urlpatterns = [
     path('association/<int:id>/delete/', AssocDelete, name='AssocDelete'),
 
     path('member/', MemberView, name='Member'),
+    path('member/edit/', MemberEditSelf, name='MemberEditSelf'),
     path('member/<int:id>/', MemberEditSingle, name='MemberEditSingle'),
     path('member/<int:id>/delete/', MemberDelete, name='MemberDelete'),
     path('member/<int:id>/managerDelete/', ManagerDelete, name='ManagerDelete'),
