@@ -2346,9 +2346,12 @@ def ImportBackup(request):
     #data = json.load(uploaded_file)
     #databaseBackupOverwrite(data)
     if append:
-        databaseBackupRecordAppend(uploaded_file)
+        fails = databaseBackupOverwriteBuffered(uploaded_file, False)
     else:
-        databaseBackupOverwriteBuffered(uploaded_file)
+        fails = databaseBackupOverwriteBuffered(uploaded_file, True)
+
+    if len(fails) > 0:
+        messages.add_message(request, messages.ERROR, f"the following data failed: {fails}")
     
     messages.add_message(request, messages.INFO, "Backup inserted")
     return redirect("Export")
