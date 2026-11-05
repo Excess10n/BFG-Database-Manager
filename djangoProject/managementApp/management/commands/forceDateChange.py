@@ -23,6 +23,7 @@ class Command(BaseCommand):
                     rec.dateFound = datetime.datetime.strptime(newDate["dateFound"], "%d/%m/%Y %H:%M").date()
                     rec.dateEntered = datetime.datetime.strptime(newDate["dateEntered"], "%d/%m/%Y %H:%M").date()
                     rec.dateUpdated = datetime.datetime.today()
+                    rec.save()
                     count += 1
 
         print(f"completed force date change with {count} records")
