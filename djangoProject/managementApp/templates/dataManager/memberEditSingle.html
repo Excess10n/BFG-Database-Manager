@@ -7,24 +7,6 @@
 <div class="container">
 <div class="row">
     <h2 class="col-auto me-auto">Editing member: {{member.fullName}}</h2>
-    {% if deleteOption %}
-        <div class="col-auto">
-            <h5>Permanently delete member?</h5>
-        </div>
-        <div class="col-auto">
-            <form action="/member/{{member.id}}/delete/?{{param}}" method="post">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-danger">Yes</button>
-            </form>
-        </div>
-        <div class="col-auto">
-            <a href="/member/{{member.id}}?deleteOption=False&{{param}}" class="button-class"><button type="button" class="btn btn-primary">No</button></a>
-        </div>
-    {% else %}
-        <div class="col-auto">
-            <a href="/member/{{member.id}}?deleteOption=True&{{param}}" class="button-class"><button type="button" class="btn btn-danger">Delete member</button></a>
-        </div>
-    {% endif %}
     <div class="col-auto">
         <a href="/member?{{param}}" class="button-class"><button type="button" class="btn btn-dark">Back</button></a>
     </div>
@@ -89,7 +71,33 @@
         {% endif %}
         </div>
     {% endif %}
+    <br/><br/><br/><br/>
+    <h3 class="text-danger"><b>⚠ Warning ⚠</h3>
+    <p class="text-danger">Deleting a member will immediately remove them from the database and any instance of this member will immediately be replaced with anonymous</p>
+    <p class="text-danger">This action is permanent and cannot be undone</p>
+    <br/>
+    <div class="container row">
+    {% if deleteOption %}
+        <div class="col-auto">
+            <h5>Permanently delete member?</h5>
+        </div>
+        <div class="col-auto">
+            <form action="/member/{{member.id}}/delete/?{{param}}" method="post">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">Delete member</button>
+            </form>
+        </div>
+        <div class="col-auto">
+            <a href="/member/{{member.id}}?deleteOption=False&{{param}}" class="button-class"><button type="button" class="btn btn-primary">No</button></a>
+        </div>
+    {% else %}
+        <div class="col-auto">
+            <a href="/member/{{member.id}}?deleteOption=True&{{param}}" class="button-class"><button type="button" class="btn btn-danger">Delete member</button></a>
+        </div>
+    {% endif %}
+    </div>
 {% endif %}
 <br/><br/>
+
 
 {% endblock content %}

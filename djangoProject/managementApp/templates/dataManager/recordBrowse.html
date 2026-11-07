@@ -117,23 +117,31 @@
             <div class="row text-danger"><b>First Database Record!</b></div>
             {% endif %}
         </div>
-        <div class="col-2">
+        <div class="col-6">
+            {% if record.litRef != None %}
             <div class="row">Lit Ref: {{record.litRef}}</div>
-            {% if record.DNATest == "Pending" %}
-            <div class="row text-danger">DNA Test: {{record.DNATest}}</div>
-            {% elif record.DNATest == "None" %}
-            <div class="row">DNA Test: ...</div>
             {% else %}
-            <div class="row">DNA Test: {{record.DNATest}}</div>
+            <div class="row">Lit Ref: ...</div>
             {% endif %}
-            <div class="row">Certainty: {{record.certainty}}</div>
-            {% if record.recordedAs != None %}
-            <div class="row small"><b>Recorded as:</b></div>
-            <div class="row small"><b>{{record.recordedAs}}</b></div>
-            {% endif %}
+            <div class="row">
+                <div class="col-4">
+                    {% if record.DNATest == "Pending" %}
+                    <div class="row text-danger">DNA Test: {{record.DNATest}}</div>
+                    {% elif record.DNATest == None %}
+                    <div class="row">DNA Test: ...</div>
+                    {% else %}
+                    <div class="row">DNA Test: {{record.DNATest}}</div>
+                    {% endif %}
+                    <div class="row">Certainty: {{record.certainty}}</div>
+                    {% if record.recordedAs != None %}
+                    <div class="row small"><b>Recorded as:</b></div>
+                    <div class="row small"><b>{{record.recordedAs}}</b></div>
+                    {% endif %}
+                </div>
+                <div class="col-1_5">Remarks:</div>
+                <div class="col-6">{{record.remarks}}</div>
+            </div>
         </div>
-        <div class="col-1">Remarks:</div>
-        <div class="col-3">{{record.remarks}}</div>
         <div class="col-1 mt-1">
             {% if isManager %}
             <a href="/record/browse/{{record.id}}?page={{page.current}}&{{param}}&expand={{record.id}}" class="button-class"><button type="button" class="btn btn-primary">edit</button></a>
