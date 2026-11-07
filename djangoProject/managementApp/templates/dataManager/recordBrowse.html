@@ -17,6 +17,8 @@
     {% crispy form %}
 </form>
 <datalist id="fungusList"></datalist>
+<br/><br/>
+<p>Total record count: <b>{{length}}</b>&nbsp;&nbsp;&nbsp;&nbsp;Total species count: <b>{{species}}</b></p>
 <br/>
 <nav aria-label="...">
     <ul class="pagination">
@@ -183,7 +185,7 @@
 {% endfor %}
 </div>
 <br/><br/>
-<p>Total species count: <b>{{species}}</b></p>
+<p>Total record count: <b>{{length}}</b>&nbsp;&nbsp;&nbsp;&nbsp;Total species count: <b>{{species}}</b></p>
 <br/>
 <nav aria-label="...">
     <ul class="pagination">

@@ -974,7 +974,7 @@ def RecordBrowseView(request):
 
     param += f"&order={order}"
 
-    context = {"records": records, "param": param, "form": form, "page": page, "expand": expand, "isManager": isManager, "species": species}
+    context = {"records": records, "param": param, "form": form, "page": page, "expand": expand, "isManager": isManager, "species": species, "length": length}
     return render(request, 'dataManager/recordBrowse.html', context)
 
 def RecordEditSingle(request, id):
@@ -2203,7 +2203,7 @@ def ExportReport(request):
     date = datetime.datetime.strptime(date, "%Y-%m-%d").strftime("%d/%m/%Y")
 
     # NEW
-    output = r'{\rtf1\ansi\deff0{\fonttbl{\f0\froman Arial;}}\paperw16836\paperh11904\margl567\margr792\margt284\margb188\gutter0\sectd\lndscpsxn{\pard \qc \f0 \fs16 \sa400 \li0 \fi0 \outlinelevel1 \b \fs28 BFG Fungi Walk at '
+    output = r'{\rtf1\ansi\deff0{\fonttbl{\f0\froman Arial;}}\paperw16836\paperh11904\margl567\margr792\margt284\margb188\gutter0\sectd\lndscpsxn{\pard \qc \f0 \fs16 \sa400 \li0 \fi0 \outlinelevel1 \b \fs28 BFG Walk at '
     output += site.name
     output += r'\u160 ?\u160 ?\u160 ?\u160 ?\u160 ?\u160 ?'
     output += str(date)
