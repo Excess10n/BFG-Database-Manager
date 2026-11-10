@@ -3,13 +3,14 @@ from django.contrib.auth import logout
 from django.contrib import messages
 from django.core import serializers
 from django.core.exceptions import PermissionDenied
+from django.db import IntegrityError
 from django.db.models import RestrictedError, Q
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 from .forms import AssocForm, SubtrForm, SiteForm, SiteSearchForm, RecordOrderForm, RecordFilterForm, RecordForm, RecordFormBrowse, RecordInitialForm, RecordForayForm, MemberForm, MemberSearchForm, MemberLoginForm, MemberSelfForm, ReportExportForm, FRDBIExportForm, SiteOwnersExportForm, FungiForm, FungiSearchForm
 from .models import Association, Substrate, Site, Record, RecordArchive, Fungi, FungiCurrent, FungiArchive, Member, MemberLogin
 from django.contrib.auth.models import User, Permission
-from .viewFunctions import getFungiObjects, searchFungiObjects, createNewCurrentFungi, databaseBackupOverwrite, databaseBackupOverwriteBuffered, databaseBackupRecordAppend
+from .viewFunctions import getFungiObjects, searchFungiObjects, getAllSimilarFungi, createNewCurrentFungi, databaseBackupOverwrite, databaseBackupOverwriteBuffered, databaseBackupRecordAppend
 import datetime
 import io
 import itertools
@@ -341,13 +342,14 @@ def manageForm(form, new, edit, request):
         inst.assoc3 = data["assoc3"]
 
     # check if this record is the first in the site, bucks, or database
+    similars = getAllSimilarFungi(inst.fungusFK)
     site_history = list(
-        Record.objects.filter(fungusFK=inst.fungusFK)
+        Record.objects.filter(fungusFK__in=similars)
         .values_list("siteFK_id", "siteFK__VC")
     )
     if not site_history:
         inst.firstRecord = 'D'
-    elif not any(vic == 24 for _, vic in site_history):
+    elif not any(vic == 24 for _, vic in site_history) and inst.siteFK.VC == 24:
         inst.firstRecord = 'B'
     elif not any(site_id == inst.siteFK_id for site_id, _ in site_history):
         inst.firstRecord = 'S'
@@ -1058,7 +1060,6 @@ def RecordDelete2(request, id):
 # -----------
 
 def clean_synonyms(text):
-    print(text)
     spl = text.split("\n")
     arr = []
     for s in spl:
@@ -1114,7 +1115,12 @@ def FungusView(request):
                 'creatorFK': request.user.user_profile,
                 'updaterFK': request.user.user_profile
             }
-            Fungi(**kwargs).save()
+            try:
+                Fungi(**kwargs).save()
+            except IntegrityError:
+                _, funObj, _ = getFungiObjects(alt)
+                messages.add_message(request, messages.ERROR, f"The synonym \"{alt}\" was not added because it's already a synonym for \"{funObj.fullName}\"")
+
         messages.add_message(request, messages.INFO, "Added new fungus")
         return redirect('/fungus?' + param)
     
@@ -1208,7 +1214,11 @@ def FungusEditSingle(request, id):
                 'creatorFK': request.user.user_profile,
                 'updaterFK': request.user.user_profile
             }
-            Fungi(**kwargs).save()
+            try:
+                Fungi(**kwargs).save()
+            except IntegrityError:
+                _, funObj, _ = getFungiObjects(alt)
+                messages.add_message(request, messages.ERROR, f"The synonym \"{alt}\" was not added because it's already a synonym for \"{funObj.fullName}\"")
         
         messages.add_message(request, messages.INFO, "Edited fungus")
         return redirect(f"/fungus/{id}?{param}")

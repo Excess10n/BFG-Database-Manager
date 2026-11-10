@@ -8,3 +8,4 @@ venv\Scripts\activate
 cd djangoProject  
 python manage.py makemigrations managementApp  
 python manage.py runserver  
+docker compose exec backend python3 manage.py  

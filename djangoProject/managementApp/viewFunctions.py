@@ -19,6 +19,25 @@ def searchFungiObjects(query): # returns array of currentFungi objects
     currents = FungiCurrent.objects.filter(currentFungus__in=fungi)
     return currents
 
+def getAllSimilarFungi(obj): # returns array of currentFungi objects where fungi "x y" is similar to fungi "x y var. y"
+    name = obj.currentFungus.fullName
+    splited = name.split(" ")
+    if len(splited) == 1:
+        return [obj]
+    # check if the current fungus is a self variety
+    if "var." in name:
+        if name != f"{splited[0]} {splited[1]} var. {splited[1]}":
+            return [obj]
+        check = f"{splited[0]} {splited[1]}"
+    else:
+        check = f"{splited[0]} {splited[1]} var. {splited[1]}"
+
+    obj2,_,_ = getFungiObjects(check)
+    if obj2 != None:
+        return [obj, obj2]
+    else:
+        return [obj]
+
 def createNewCurrentFungi(id):
     curr = FungiCurrent(currentFungus=Fungi.objects.get(id=id))
     curr.save()
