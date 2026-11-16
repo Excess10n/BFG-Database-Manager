@@ -731,7 +731,7 @@ def RecordBrowseView(request):
             #if fungus == None:
             #    messages.add_message(request, messages.ERROR, f"Fungus \"{data['fungus']}\" not found")
             #    redirect(RecordBrowseView)
-            fungus = searchFungiObjects(data["fungus"])
+            fungus = searchFungiObjects(data["fungus"], True)
             param += f"fungus={data['fungus']}&"
 
         if data["site"] != "" and data["site"] != None:
@@ -2070,11 +2070,11 @@ def ExportExcel(request):
         response = HttpResponse(file, content_type="application/csv")
         if dateFrom == dateTo:
             date = datetime.datetime.strptime(dateFrom, "%Y-%m-%d").strftime("%d/%m/%Y")
-            response["Content-Disposition"] = f'attachment; filename="Excel site owners export {date}.csv"'
+            response["Content-Disposition"] = f'attachment; filename="{site_name} {date} FRDBFG.csv"'
         else:
             date1 = datetime.datetime.strptime(dateFrom, "%Y-%m-%d").strftime("%d/%m/%Y")
             date2 = datetime.datetime.strptime(dateTo, "%Y-%m-%d").strftime("%d/%m/%Y")
-            response["Content-Disposition"] = f'attachment; filename="Excel site owners export {date1} to {date2}.csv"'
+            response["Content-Disposition"] = f'attachment; filename="{site_name} {date1} to {date2}.csv"'
         return response
 
     # FRDBI excel report
@@ -2310,7 +2310,7 @@ def ExportReport(request):
     # rtf = rtf.replace(r'\pard \ql \f0 \fs16 \sa0 \li0 \fi0 \outlinelevel1 \b \fs28 Species total for visit:', r'\pard \qc \f0 \fs16 \sa0 \li0 \fi0 \outlinelevel1 \b \fs28 Species total for visit:')
 
     response = HttpResponse(output, content_type="application/rtf")
-    response["Content-Disposition"] = f'attachment; filename="BFG Walk Report {date}.rtf"'
+    response["Content-Disposition"] = f'attachment; filename="{site.name} {date} FRDBFG.rtf"'
     return response
 
 

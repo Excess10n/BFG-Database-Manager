@@ -1,5 +1,6 @@
 from .models import Association, Substrate, Site, Record, RecordArchive, Fungi, FungiCurrent, FungiArchive, Member
 from django.contrib.auth.models import User
+from django.db.models import Q
 import ijson
 
 
@@ -14,9 +15,13 @@ def getFungiObjects(name): # returns (currentFungi, parent, array of children)
         return current.first(), fungus, children
     return fungus.currentName, fungus.currentName.currentFungus, [fungus]
 
-def searchFungiObjects(query): # returns array of currentFungi objects
-    fungi = Fungi.objects.filter(fullName__icontains=query, currentName=None)
-    currents = FungiCurrent.objects.filter(currentFungus__in=fungi)
+def searchFungiObjects(query, include_english=False): # returns array of currentFungi objects
+    if include_english:
+        fungi = Fungi.objects.filter(currentName=None).filter(Q(fullName__icontains=query) | Q(englishName__icontains=query))
+        currents = FungiCurrent.objects.filter(currentFungus__in=fungi)
+    else:
+        fungi = Fungi.objects.filter(fullName__icontains=query, currentName=None)
+        currents = FungiCurrent.objects.filter(currentFungus__in=fungi)
     return currents
 
 def getAllSimilarFungi(obj): # returns array of currentFungi objects where fungi "x y" is similar to fungi "x y var. y"

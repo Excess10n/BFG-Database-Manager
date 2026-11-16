@@ -398,7 +398,7 @@ class RecordFilterForm(forms.Form):
         choices=CHOICES,
     )
 
-    fungus = forms.CharField(label="Fungus", max_length=64, required=False, widget=forms.TextInput(attrs={"list": "fungusList", "autocomplete": "off"}))
+    fungus = forms.CharField(label="Fungus (Latin or English name)", max_length=64, required=False, widget=forms.TextInput(attrs={"list": "fungusList", "autocomplete": "off"}))
     site = forms.CharField(label="Site", max_length=64, required=False, widget=ListTextWidget(dataset=get_site_names, name="siteList"))
     id = forms.CharField(label="Unique Code", max_length=64, required=False)
     vc = forms.IntegerField(label="VC", max_value=100, required=False)
