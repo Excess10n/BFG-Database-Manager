@@ -10,7 +10,7 @@ from django.template.loader import render_to_string
 from .forms import AssocForm, SubtrForm, SiteForm, SiteSearchForm, RecordOrderForm, RecordFilterForm, RecordForm, RecordFormBrowse, RecordInitialForm, RecordForayForm, MemberForm, MemberSearchForm, MemberLoginForm, MemberSelfForm, ReportExportForm, FRDBIExportForm, SiteOwnersExportForm, FungiForm, FungiSearchForm
 from .models import Association, Substrate, Site, Record, RecordArchive, Fungi, FungiCurrent, FungiArchive, Member, MemberLogin
 from django.contrib.auth.models import User, Permission
-from .viewFunctions import getFungiObjects, searchFungiObjects, getAllSimilarFungi, createNewCurrentFungi, databaseBackupOverwrite, databaseBackupOverwriteBuffered, databaseBackupRecordAppend
+from .viewFunctions import getFungiObjects, searchFungiObjects, getAllSimilarFungi, createNewCurrentFungi, fixFirsts, databaseBackupOverwrite, databaseBackupOverwriteBuffered, databaseBackupRecordAppend
 import datetime
 import io
 import itertools
@@ -1027,6 +1027,32 @@ def RecordEditSingle(request, id):
     
     context = {"record": record, "form": form, "param": param, "deleteOption": deleteOption}
     return render(request, 'dataManager/recordEditSingle.html', context)
+
+def RecordFirstRefresh(request, id):
+    if not request.user.is_authenticated:
+        raise PermissionDenied()
+
+    if not checkPerms(request.user):
+        raise PermissionDenied()
+    
+    record = get_object_or_404(Record, id=id)
+
+    # get the query paramters to be redirected to
+    param = ""
+    for key, value in request.GET.items():
+        if value is not None:
+            param += f"{key}={value}&"
+    if param:
+        param = param[:-1]
+    
+    if request.method == "POST":
+        try:
+            fixFirsts(record, datetime.datetime.now() - datetime.timedelta(days=365))
+            messages.add_message(request, messages.INFO, '"first record" values have been refreshed')
+        except:
+            messages.add_message(request, messages.ERROR, '"first record" values failed to refreshed')
+    return redirect(f"/record/browse/{id}?{param}")
+
 
 def RecordDelete2(request, id):
     if not request.user.is_authenticated:

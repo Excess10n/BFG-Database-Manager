@@ -35,6 +35,12 @@
         {% crispy form %}
     </form>
 </div>
+<br/><br/>
+<form action="/record/browse/{{record.id}}/refresh/?{{param}}" method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-primary">Refresh "first record" values</button>
+</form>
+<br/><br/>
 
 {% include "scripts/fungiSuggestions.html" %}
 

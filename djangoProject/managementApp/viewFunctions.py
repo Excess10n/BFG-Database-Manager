@@ -2,6 +2,7 @@ from .models import Association, Substrate, Site, Record, RecordArchive, Fungi, 
 from django.contrib.auth.models import User
 from django.db.models import Q
 import ijson
+import datetime
 
 
 def getFungiObjects(name): # returns (currentFungi, parent, array of children)
@@ -47,6 +48,27 @@ def createNewCurrentFungi(id):
     curr = FungiCurrent(currentFungus=Fungi.objects.get(id=id))
     curr.save()
     return curr
+
+
+def fixFirsts(record, dateLimit):
+    if record == None:
+        records = Record.objects.filter(dateUpdated__gt=dateLimit)
+    else:
+        records = Record.objects.filter(dateUpdated__gt=dateLimit, fungusFK=record.fungusFK)
+    for inst in records:
+        inst.firstRecord = 'N'
+        similars = getAllSimilarFungi(inst.fungusFK)
+        site_history = list(
+            Record.objects.filter(fungusFK__in=similars, dateFound__lt=inst.dateFound)
+            .values_list("siteFK_id", "siteFK__VC")
+        )
+        if not site_history:
+            inst.firstRecord = 'D'
+        elif not any(vic == 24 for _, vic in site_history) and inst.siteFK.VC == 24:
+            inst.firstRecord = 'B'
+        elif not any(site_id == inst.siteFK_id for site_id, _ in site_history):
+            inst.firstRecord = 'S'
+        inst.save()
 
 
 # import system (similar to seed but more direct) (DEPRECIATED)
@@ -304,6 +326,8 @@ def databaseBackupOverwriteBuffered(file, delete_existing):
 
     return fails
 
+
+# Currently unused, use the above function instead
 def databaseBackupRecordAppend(file):
     for d in ijson.items(file, "item"):
         fields = d["fields"]
